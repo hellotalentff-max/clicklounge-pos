@@ -2952,7 +2952,8 @@ function renderCalendarLists(acks, yr, mo){
           '</div>'+
         '</div>'+
         '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
-          '<button class="btn btn-sm btn-teal" data-name="'+encodeURIComponent(clientName)+'" data-date="'+date+'" data-svc="'+encodeURIComponent(service)+'" data-email="'+encodeURIComponent(evEmail)+'" data-time="'+encodeURIComponent(evTime)+'" data-evid="'+encodeURIComponent(evId)+'" onclick="openNewAckFromCalEvent(this)">+ Create Receipt</button>'+
+          '<button class="btn btn-sm btn-teal" data-name="'+encodeURIComponent(clientName)+'" data-date="'+date+'" data-svc="'+encodeURIComponent(service)+'" data-email="'+encodeURIComponent(evEmail)+'" data-time="'+encodeURIComponent(evTime)+'" data-evid="'+encodeURIComponent(evId)+'" onclick="openNewAckFromCalEvent(this)">✉ Confirm & Email</button>'+
+          '<button class="btn btn-sm btn-outline" style="font-size:10px;padding:4px 8px;" data-name="'+encodeURIComponent(clientName)+'" data-date="'+date+'" data-svc="'+encodeURIComponent(service)+'" data-email="'+encodeURIComponent(evEmail)+'" data-time="'+encodeURIComponent(evTime)+'" data-evid="'+encodeURIComponent(evId)+'" onclick="quickConfirmBooking(this)">⚡ Quick</button>'+
         '</div>'+
       '</div>';
     });
@@ -3017,6 +3018,48 @@ function calDayClick(dateStr){
 function calConfirmAck(btn){ var id=btn.dataset.aid; confirmAck(id); closeModal(); }
 function calPrintAck(btn)  { var id=btn.dataset.aid; printAck(id); }
 function calDeleteAck(btn) { var id=btn.dataset.aid; deleteAck(id); closeModal(); }
+
+// Quick confirm — no modal, directly calls confirmBooking with event data
+async function quickConfirmBooking(btn){
+  var name  = decodeURIComponent(btn.dataset.name||'');
+  var date  = btn.dataset.date||'';
+  var svc   = decodeURIComponent(btn.dataset.svc||'');
+  var email = decodeURIComponent(btn.dataset.email||'');
+  var time  = decodeURIComponent(btn.dataset.time||'');
+  var evId  = decodeURIComponent(btn.dataset.evid||'');
+
+  if(!email){ notify('No email found — use Confirm & Email to enter it manually','error'); return; }
+  if(!confirm('Quick confirm booking for '+name+' on '+date+'?\n\nConfirmation email will be sent to: '+email)){ return; }
+
+  btn.disabled = true; btn.textContent = '...';
+  notify('Confirming...','info');
+  try{
+    var result = await gasCall('confirmBooking', {
+      eventId:evId, fbName:name, email:email, service:svc,
+      bookDate:date, timeSlot:time, mop:'GCash', downpayment:0
+    });
+    if(result.ok){
+      var ack = result.ack || {id:uid(),date:todayStr(),fbName:name,email:email,service:svc,bookDate:date,ackNum:result.ackNum||'',status:'Confirmed',timeSlot:time};
+      if(!DB.acknowledgements) DB.acknowledgements=[];
+      DB.acknowledgements.push(ack);
+      if(!DB.clients) DB.clients=[];
+      if(!DB.clients.find(function(c){return(c.fbName||'').toLowerCase()===name.toLowerCase();})){
+        var cl={id:uid(),fbName:name,email:email,type:'booked',added:todayStr()};
+        DB.clients.push(cl); push('saveClient',cl);
+      }
+      saveLocal();
+      notify('Booking confirmed! Email sent to '+email,'success');
+      logActivity('Quick Confirmed',(result.ackNum||'')+' — '+name,'success');
+      renderCalendar();
+    } else {
+      notify('Failed: '+(result.error||'Unknown'),'error');
+      btn.disabled=false; btn.textContent='Quick';
+    }
+  }catch(e){
+    notify('Error: '+e.message,'error');
+    btn.disabled=false; btn.textContent='Quick';
+  }
+}
 
 function openNewAckFromCalEvent(btn){
   var name  = decodeURIComponent(btn.dataset.name||'');
