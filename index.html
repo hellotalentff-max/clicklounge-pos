@@ -1230,6 +1230,7 @@ tr:hover td { background:var(--light); }
   <div class="ph">
     <div><h2>Client Records</h2><p>CRM — history, activity and direct messaging</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-outline" onclick="runSyncClients()" title="Scan all sheets and auto-fill missing client records">🔄 Sync Missing Clients</button>
       <button class="btn btn-sm btn-outline" onclick="openImportClients()">📥 Import CSV</button>
       <button class="btn btn-gold" onclick="openCRMCompose()">✉ Send Campaign</button>
     </div>
@@ -5334,6 +5335,36 @@ async function submitInvoice(){
   DB.transactions.push(txn); saveLocal(); notify('Invoice saved: '+invNum);
   logActivity('Invoice Submitted', invNum+' — '+clientName+' — ₱'+fmt(total), 'success');
   await push('saveTransaction',txn);
+
+  // Auto-upsert client to Clients sheet with all available data
+  (function(){
+    var name = clientName.trim();
+    if(!name) return;
+    // Look up existing client record
+    var cl = (DB.clients||[]).find(function(c){ return (c.fbName||'').toLowerCase()===name.toLowerCase(); }) || {};
+    // Enrich from today's registration
+    var reg = (DB.registrations||[]).slice().reverse().find(function(r){ return (r.fbName||'').toLowerCase()===name.toLowerCase(); });
+    // Enrich from acknowledgement receipts
+    var ack = (DB.acknowledgements||[]).slice().reverse().find(function(a){ return (a.fbName||'').toLowerCase()===name.toLowerCase(); });
+    var merged = {
+      id:             cl.id || uid(),
+      fbName:         name,
+      email:          cl.email || (reg&&reg.email) || (ack&&ack.email) || '',
+      phone:          cl.phone || (reg&&reg.phone) || '',
+      birthday:       cl.birthday || (reg&&reg.birthday) || '',
+      type:           cl.type || (reg&&reg.arrType) || 'walkin',
+      socialConsent:  cl.socialConsent || (reg&&reg.socialConsent) || '',
+      referredBy:     cl.referredBy || '',
+      notes:          cl.notes || '',
+      staffNotes:     cl.staffNotes || '',
+      added:          cl.added || todayStr()
+    };
+    // Only update local DB if not already there
+    var existIdx = (DB.clients||[]).findIndex(function(c){ return (c.fbName||'').toLowerCase()===name.toLowerCase(); });
+    if(existIdx >= 0){ Object.assign(DB.clients[existIdx], merged); }
+    else { if(!DB.clients) DB.clients=[]; DB.clients.push(merged); }
+    push('saveClient', merged);
+  })();
   INV=[];
   ['inv-num','dp-amt','v-amt','bal-mop'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('inv-client').value='';
@@ -5575,6 +5606,29 @@ function printInvoice(id){
 //  IMPORT CLIENTS FROM CSV
 // ================================================================
 function triggerImportFile(){ var el=document.getElementById('cl-import-file'); if(el) el.click(); }
+
+async function runSyncClients(){
+  if(!hasUrl()){ notify('Not connected to server','error'); return; }
+  notify('Scanning all sheets for missing clients…','info');
+  try{
+    var r = await gasCall('syncClients',{});
+    if(r.ok){
+      notify('✓ Clients synced — '+r.added+' added, '+r.updated+' updated','success');
+      // Refresh local client list
+      var r2 = await gasCall('getAll',{});
+      if(r2.ok){
+        if(Array.isArray(r2.clients)) DB.clients = r2.clients;
+        saveLocal();
+        renderClients();
+        updateClientDatalist();
+      }
+    } else {
+      notify('Sync failed: '+(r.error||'Unknown'),'error');
+    }
+  }catch(e){
+    notify('Error: '+e.message,'error');
+  }
+}
 
 function openImportClients(){
   var html =
