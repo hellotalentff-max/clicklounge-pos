@@ -1609,6 +1609,7 @@ tr:hover td { background:var(--light); }
     <button class="rep-cat-btn" id="rcat-clients" onclick="setRepCat('clients')">👥 Clients</button>
     <button class="rep-cat-btn" id="rcat-packages" onclick="setRepCat('packages')">📦 Packages</button>
     <button class="rep-cat-btn" id="rcat-operations" onclick="setRepCat('operations')">⚙ Operations</button>
+    <button class="rep-cat-btn" id="rcat-bookings" onclick="setRepCat('bookings')">📅 Bookings</button>
   </div>
 
   <!-- Period Selector (shared) -->
@@ -1809,6 +1810,37 @@ tr:hover td { background:var(--light); }
     </div>
   </div>
 
+  <!-- ── BOOKINGS ANALYTICS ── -->
+  <div id="rep-cat-bookings" class="rep-cat" style="display:none;">
+    <div class="rep-section-grid">
+      <div class="rep-card-stat" id="bk-total"><div class="rs-label">Total Bookings</div><div class="rs-val">—</div></div>
+      <div class="rep-card-stat" id="bk-confirmed"><div class="rs-label">Confirmed</div><div class="rs-val rs-teal">—</div></div>
+      <div class="rep-card-stat" id="bk-pending"><div class="rs-label">Pending Payment</div><div class="rs-val rs-gold">—</div></div>
+      <div class="rep-card-stat" id="bk-cancelled"><div class="rs-label">Cancelled</div><div class="rs-val rs-danger">—</div></div>
+    </div>
+
+    <!-- Booking requests by time slot -->
+    <div class="card">
+      <div class="ct">🕐 Booking Requests by Time Slot</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Which time slots are most in demand this period</div>
+      <div id="rep-slot-chart"></div>
+    </div>
+
+    <!-- Submission time distribution -->
+    <div class="card">
+      <div class="ct">⏰ When Clients Submit Booking Requests</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Hour-of-day distribution of booking form submissions from <a href="https://hellotalentff-max.github.io/clicklounge_booking/" target="_blank" style="color:var(--teal);">the booking link</a></div>
+      <div id="rep-submit-chart"></div>
+    </div>
+
+    <!-- Day of week distribution -->
+    <div class="card">
+      <div class="ct">📅 Booking Requests by Day of Week</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;">Which days of the week clients most often book sessions</div>
+      <div id="rep-dow-chart"></div>
+    </div>
+  </div>
+
   <div id="report-output" style="display:none;"></div>
 </div>
 
@@ -1974,60 +2006,116 @@ tr:hover td { background:var(--light); }
 
 <!-- BOOKINGS CALENDAR (admin only) -->
 <div id="page-calendar" class="page">
-  <div class="ph">
-    <div><h2>Bookings Calendar</h2><p id="cal-month-label">Loading…</p></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <button class="btn btn-outline btn-sm" onclick="calNav(-1)">← Prev</button>
-      <button class="btn btn-teal btn-sm" onclick="calNavToday()">Today</button>
-      <button class="btn btn-outline btn-sm" onclick="calNav(1)">Next →</button>
-      <button class="btn btn-danger btn-sm" onclick="openBlockDialog()">🚫 Block Date/Time</button>
+
+  <!-- ── HEADER ── -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:0;">
+      <h2 style="font-size:20px;font-weight:700;color:var(--slate);">Bookings Calendar</h2>
+      <div id="cal-month-label" style="font-size:14px;font-weight:600;color:var(--teal);margin-top:2px;"></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <button onclick="calNav(-1)" style="background:none;border:none;padding:8px 14px;cursor:pointer;font-size:16px;color:var(--slate);font-family:inherit;">‹</button>
+        <button onclick="calNavToday()" style="background:var(--slate);border:none;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;color:var(--cream);font-family:inherit;border-left:1px solid rgba(255,255,255,.1);border-right:1px solid rgba(255,255,255,.1);">Today</button>
+        <button onclick="calNav(1)" style="background:none;border:none;padding:8px 14px;cursor:pointer;font-size:16px;color:var(--slate);font-family:inherit;">›</button>
+      </div>
+      <button onclick="renderCalendar()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--muted);font-family:inherit;" title="Refresh">↻</button>
+      <button onclick="openBlockDialog()" style="background:var(--danger);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;">🚫 Block Date</button>
     </div>
   </div>
 
-  <!-- Legend -->
-  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:12px;height:12px;border-radius:3px;background:#fff3cd;border:1px solid #ffc107;display:inline-block;"></span>Pending Payment</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:12px;height:12px;border-radius:3px;background:#d4edda;border:1px solid #51897d;display:inline-block;"></span>Confirmed</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:12px;height:12px;border-radius:3px;background:#f8d7da;border:1px solid #c0544a;display:inline-block;"></span>Cancelled</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:12px;height:12px;border-radius:3px;background:var(--light2);border:1px solid var(--border);display:inline-block;"></span>Other</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;"><span style="width:12px;height:12px;border-radius:3px;background:#e8e8e8;border:1px solid #999;display:inline-block;"></span>Blocked</div>
+  <!-- ── STATS BAR ── -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-top:3px solid #ffc107;">
+      <div style="font-size:28px;font-weight:800;color:#856404;line-height:1;" id="cal-stat-pending">—</div>
+      <div style="font-size:10px;font-weight:700;color:#856404;text-transform:uppercase;letter-spacing:.8px;margin-top:4px;">Pending</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-top:3px solid var(--teal);">
+      <div style="font-size:28px;font-weight:800;color:var(--teal);line-height:1;" id="cal-stat-confirmed">—</div>
+      <div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.8px;margin-top:4px;">Confirmed</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-top:3px solid var(--slate);">
+      <div style="font-size:28px;font-weight:800;color:var(--slate);line-height:1;" id="cal-stat-total">—</div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:4px;">Total Month</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 16px;border-top:3px solid var(--gold);">
+      <div style="font-size:28px;font-weight:800;color:var(--gold);line-height:1;" id="cal-stat-today">—</div>
+      <div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.8px;margin-top:4px;">Today</div>
+    </div>
   </div>
 
-  <!-- Calendar grid -->
-  <div class="card" style="padding:0;overflow:hidden;">
-    <!-- Day headers -->
+  <!-- ── LEGEND ── -->
+  <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap;">
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:8px;height:8px;border-radius:50%;background:#ffc107;display:inline-block;flex-shrink:0;"></span>Pending Payment</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0;"></span>Confirmed</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:8px;height:8px;border-radius:50%;background:var(--danger);display:inline-block;flex-shrink:0;"></span>Cancelled</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><span style="width:8px;height:8px;border-radius:2px;background:repeating-linear-gradient(45deg,#ccc 0,#ccc 2px,transparent 2px,transparent 6px);display:inline-block;flex-shrink:0;"></span>Blocked</span>
+  </div>
+
+  <!-- ── CALENDAR GRID ── -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 8px rgba(47,79,79,.04);margin-bottom:20px;">
     <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--slate);">
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Mon</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Tue</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Wed</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Thu</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Fri</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:var(--teal-lt);text-transform:uppercase;letter-spacing:1px;">Sat</div>
-      <div style="padding:8px;text-align:center;font-size:10px;font-weight:600;color:rgba(232,239,238,0.3);text-transform:uppercase;letter-spacing:1px;">Sun</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Mon</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Tue</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Wed</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Thu</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Fri</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.7);text-transform:uppercase;letter-spacing:1.5px;">Sat</div>
+      <div style="padding:12px 4px;text-align:center;font-size:10px;font-weight:700;color:rgba(245,240,232,.25);text-transform:uppercase;letter-spacing:1.5px;">Sun</div>
     </div>
-    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--light2);grid-auto-rows:90px;"></div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:110px;"></div>
   </div>
 
-  <!-- Pending bookings list -->
-  <div class="card" style="margin-top:16px;">
-    <div class="ct">Pending Payments — Action Required</div>
-    <div id="pending-list"><div class="tm">Loading…</div></div>
-  </div>
-
-  <!-- Confirmed bookings list -->
-  <div class="card" style="margin-top:16px;">
-    <div class="ct">Confirmed Bookings</div>
-    <div id="confirmed-list"><div class="tm">Loading…</div></div>
-  </div>
-
-  <!-- Blocked dates/times -->
-  <div class="card" style="margin-top:16px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div class="ct" style="margin:0;">🚫 Blocked Dates & Times</div>
-      <button class="btn btn-sm btn-outline" onclick="openBlockDialog()">+ Add Block</button>
+  <!-- ── DAY DETAIL PANEL (hidden, slides in on day click) ── -->
+  <div id="cal-day-panel" style="display:none;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:20px;box-shadow:0 2px 12px rgba(47,79,79,.06);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="font-size:14px;font-weight:700;color:var(--slate);" id="day-panel-title"></div>
+      <button onclick="document.getElementById('cal-day-panel').style.display='none'" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;">✕</button>
     </div>
-    <div id="blocked-list"><div class="tm">No blocked dates or times.</div></div>
+    <div id="day-panel-content"></div>
   </div>
+
+  <!-- ── PENDING BOOKINGS ── -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:3px;height:20px;background:#ffc107;border-radius:2px;flex-shrink:0;"></div>
+      <span style="font-size:14px;font-weight:700;color:var(--slate);">Action Required</span>
+      <span id="pending-badge" style="font-size:10px;background:rgba(255,193,7,0.12);color:#856404;padding:3px 10px;border-radius:10px;font-weight:700;"></span>
+      <div style="flex:1;"></div>
+    </div>
+    <div id="pending-list"><div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">✅ No pending bookings this month.</div></div>
+  </div>
+
+  <!-- ── CONFIRMED BOOKINGS ── -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:3px;height:20px;background:var(--teal);border-radius:2px;flex-shrink:0;"></div>
+      <span style="font-size:14px;font-weight:700;color:var(--slate);">Confirmed Sessions</span>
+      <span id="confirmed-badge" style="font-size:10px;background:rgba(81,137,125,0.1);color:var(--teal);padding:3px 10px;border-radius:10px;font-weight:700;"></span>
+    </div>
+    <div id="confirmed-list"><div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">No confirmed bookings this month.</div></div>
+  </div>
+
+  <!-- ── TIME DISTRIBUTION ── -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:3px;height:20px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
+      <span style="font-size:14px;font-weight:700;color:var(--slate);">Booking Requests by Time Slot</span>
+      <span style="font-size:11px;color:var(--muted);">— most popular this month</span>
+    </div>
+    <div id="time-dist-chart"></div>
+  </div>
+
+  <!-- ── BLOCKED ── -->
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="width:3px;height:20px;background:#bbb;border-radius:2px;flex-shrink:0;"></div>
+      <span style="font-size:14px;font-weight:700;color:var(--slate);">Blocked Dates & Times</span>
+      <button onclick="openBlockDialog()" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:7px;padding:5px 12px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;">+ Add Block</button>
+    </div>
+    <div id="blocked-list"><div style="text-align:center;color:var(--muted);padding:20px;font-size:13px;">No blocked dates or times.</div></div>
+  </div>
+
 </div>
 
 </div><!-- /main -->
@@ -2789,7 +2877,6 @@ function renderCalendar(){
   const lbl = document.getElementById('cal-month-label');
   if(lbl) lbl.textContent = MONTH_NAMES[mo] + ' ' + yr;
 
-  // Monday-first offset
   const firstJsDay  = new Date(yr, mo, 1).getDay();
   const firstOffset = (firstJsDay === 0) ? 6 : firstJsDay - 1;
   const daysInMo    = new Date(yr, mo+1, 0).getDate();
@@ -2799,171 +2886,318 @@ function renderCalendar(){
   const closedDates = getClosedDates().map(function(c){ return c.date||c; });
   const acks        = (DB.acknowledgements||[]);
   const blocked     = (DB.blockedDates||[]);
-  // Merge calendar events (from Google Calendar poll) + acknowledgements
   const calEvents   = (DB._calEvents||[]);
 
-  var html = '';
+  // Month stats
+  const prefix   = yr+'-'+String(mo+1).padStart(2,'0');
+  const moAcks   = acks.filter(function(a){ return String(a.bookDate||'').startsWith(prefix); });
+  const moPend   = moAcks.filter(function(a){ var s=String(a.status||'').toLowerCase(); return !s||s.includes('pending'); });
+  const moConf   = moAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); });
+  const todayAcks = acks.filter(function(a){ return String(a.bookDate||'').slice(0,10)===today; });
 
+  var sp = document.getElementById('cal-stat-pending');   if(sp) sp.textContent = moPend.length;
+  var sc = document.getElementById('cal-stat-confirmed'); if(sc) sc.textContent = moConf.length;
+  var st = document.getElementById('cal-stat-total');     if(st) st.textContent = moAcks.length;
+  var sd = document.getElementById('cal-stat-today');     if(sd) sd.textContent = todayAcks.length;
+
+  var pb = document.getElementById('pending-badge');   if(pb) pb.textContent = moPend.length+' need attention';
+  var cb = document.getElementById('confirmed-badge'); if(cb) cb.textContent = moConf.length+' this month';
+
+  var html = '';
   for(var i = 0; i < firstOffset; i++){
-    html += '<div style="height:100%;background:var(--light);border:1px solid var(--light2);"></div>';
+    html += '<div style="background:var(--light);border:1px solid var(--light2);"></div>';
   }
 
-  function bookingChip(name, color, border){
-    return '<div style="font-size:9px;background:'+color+';border:1px solid '+border+
-           ';border-radius:3px;padding:1px 4px;margin-top:2px;overflow:hidden;'+
-           'text-overflow:ellipsis;white-space:nowrap;">'+escHtml(name)+'</div>';
+  function bookingChip(name, bg, dot){
+    return '<div style="display:flex;align-items:center;gap:3px;padding:2px 5px;margin-top:2px;background:'+bg+';border-radius:4px;overflow:hidden;">'+
+      '<span style="width:5px;height:5px;border-radius:50%;background:'+dot+';flex-shrink:0;display:inline-block;"></span>'+
+      '<span style="font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;">'+escHtml(name.split(' ')[0])+'</span>'+
+    '</div>';
   }
 
   for(var d = 1; d <= daysInMo; d++){
     var dateStr  = yr+'-'+String(mo+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday  = dateStr === today;
+    var isPast   = dateStr < today;
     var jsDay    = new Date(dateStr+'T00:00:00').getDay();
+    var isSun    = jsDay === 0;
     var isRest   = restDays.includes(jsDay) || closedDates.includes(dateStr);
     var isBlocked= blocked.some(function(b){ return b.date===dateStr; });
 
-    // Acknowledgements for this day
-    var dayAcks  = acks.filter(function(a){ return String(a.bookDate||'').slice(0,10) === dateStr; });
-    var pend     = dayAcks.filter(function(a){ var s=String(a.status||'').toLowerCase(); return !s||s==='pending'||s.includes('pending'); });
-    var conf     = dayAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); });
-    var canc     = dayAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('cancel'); });
+    var dayAcks = acks.filter(function(a){ return String(a.bookDate||'').slice(0,10) === dateStr; });
+    var pend    = dayAcks.filter(function(a){ var s=String(a.status||'').toLowerCase(); return !s||s.includes('pending'); });
+    var conf    = dayAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); });
+    var canc    = dayAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('cancel'); });
 
-    // Google Calendar events for this day — exclude those already receipted
-    var dayEvents = calEvents.filter(function(ev){
-      return String(ev.start||'').slice(0,10) === dateStr;
-    });
+    var dayEvents = calEvents.filter(function(ev){ return String(ev.start||'').slice(0,10) === dateStr; });
     var evPend = dayEvents.filter(function(ev){
       if(ev.status !== 'pending') return false;
-      // Exclude if an ack receipt already exists for this date with matching name
-      var evTitle    = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
-      var nameMatch  = evTitle.match(/—\s*(.+?)\s*[\(\|]/);
-      var clientName = (nameMatch ? nameMatch[1] : evTitle).trim().toLowerCase();
-      var receipted  = dayAcks.some(function(a){
-        var ackName = String(a.fbName||'').toLowerCase();
-        return ackName.includes(clientName.split(' ')[0]) || clientName.includes(ackName.split(' ')[0]);
+      var evTitle = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
+      var nm = evTitle.match(/—\s*(.+?)\s*[\(\|]/);
+      var clientName = (nm ? nm[1] : evTitle).trim().toLowerCase();
+      var receipted = dayAcks.some(function(a){
+        var an = String(a.fbName||'').toLowerCase();
+        return an.includes(clientName.split(' ')[0]) || clientName.includes(an.split(' ')[0]);
       });
       return !receipted;
     });
     var evConf = dayEvents.filter(function(ev){ return ev.status==='confirmed'; });
 
-    var bg = 'var(--white)';
-    if(isRest)    bg = 'rgba(192,84,74,0.04)';
-    if(isBlocked) bg = '#e8e8e8';
-    if(isToday)   bg = 'rgba(81,137,125,0.1)';
+    var allCount = pend.length + conf.length + evPend.length;
 
-    var allCount = dayAcks.length + dayEvents.length;
+    // Cell background
+    var bg = 'var(--white)';
+    var borderStyle = '1px solid var(--light2)';
+    if(isPast && !isToday) bg = 'var(--light)';
+    if(isRest||isSun) bg = 'rgba(192,84,74,0.03)';
+    if(isBlocked) bg = 'rgba(180,180,180,0.12)';
+    if(isToday) { bg='rgba(81,137,125,0.08)'; borderStyle='1px solid rgba(81,137,125,0.3)'; }
+
+    var dayNumStyle = 'font-size:13px;font-weight:'+(isToday?'800':'400')+';color:'+
+      (isToday?'var(--teal)':isSun?'var(--danger)':isPast?'var(--muted)':'var(--text)')+
+      ';margin-bottom:3px;';
+
+    // Count badge
+    var badge = '';
+    if(allCount > 0){
+      badge = '<span style="float:right;font-size:9px;background:'+(pend.length+evPend.length>0?'#ffc107':'var(--teal)')+';color:'+(pend.length+evPend.length>0?'#000':'#fff')+';border-radius:8px;padding:0 4px;font-weight:700;line-height:14px;">'+allCount+'</span>';
+    }
+
     var chips = '';
-    if(isBlocked) chips += '<div style="font-size:9px;color:#666;background:#ddd;border-radius:2px;padding:1px 3px;">🚫</div>';
-    // Show ack receipts
-    pend.slice(0,2).forEach(function(a){ chips += bookingChip(a.fbName,'#fff3cd','#ffc107'); });
-    conf.slice(0,2).forEach(function(a){ chips += bookingChip(a.fbName,'#d4edda','#51897d'); });
-    canc.slice(0,1).forEach(function(a){ chips += bookingChip(a.fbName,'#f8d7da','#c0544a'); });
-    // Show Google Cal events not already in acks
+    if(isBlocked) chips += '<div style="font-size:9px;color:#888;margin-top:2px;">🚫 blocked</div>';
+    pend.slice(0,2).forEach(function(a){ chips += bookingChip(a.fbName,'rgba(255,243,205,0.8)','#ffc107'); });
+    conf.slice(0,2).forEach(function(a){ chips += bookingChip(a.fbName,'rgba(212,237,218,0.8)','#51897d'); });
+    canc.slice(0,1).forEach(function(a){ chips += bookingChip(a.fbName,'rgba(248,215,218,0.8)','#c0544a'); });
     evPend.slice(0,2).forEach(function(ev){
       var name = ev.title.replace(/\[PENDING\]/g,'').replace(/\[CONFIRMED\]/g,'').trim();
-      chips += bookingChip(name,'#fff3cd','#ffc107');
+      chips += bookingChip(name,'rgba(255,243,205,0.8)','#ffc107');
     });
     evConf.slice(0,1).forEach(function(ev){
       var name = ev.title.replace(/\[PENDING\]/g,'').replace(/\[CONFIRMED\]/g,'').trim();
-      chips += bookingChip(name,'#d4edda','#51897d');
+      chips += bookingChip(name,'rgba(212,237,218,0.8)','#51897d');
     });
-    if(allCount > 4) chips += '<div style="font-size:9px;color:var(--muted);margin-top:2px;">+'+(allCount-4)+' more</div>';
+    var hiddenCount = (pend.length+conf.length+evPend.length) - 4;
+    if(hiddenCount > 0) chips += '<div style="font-size:9px;color:var(--muted);margin-top:2px;font-style:italic;">+'+hiddenCount+' more</div>';
 
-    html += '<div style="height:100%;box-sizing:border-box;background:'+bg+';border:1px solid var(--light2);'+
-            'padding:5px;cursor:pointer;overflow:hidden;" onclick="calDayClick(\''+dateStr+'\')">'+
-            '<div style="font-size:11px;font-weight:'+(isToday?'700':'500')+';color:'+
-            (isToday?'var(--teal)':isRest?'var(--danger)':'var(--text)')+';margin-bottom:3px;">'+d+'</div>'+
+    html += '<div style="box-sizing:border-box;background:'+bg+';border:'+borderStyle+';padding:6px;cursor:pointer;overflow:hidden;transition:background .1s;" '+
+            'onclick="calDayClick(\''+dateStr+'\')" '+
+            'onmouseover="if(!this.classList.contains(\'today-cell\'))this.style.background=\'rgba(81,137,125,0.05)\'" '+
+            'onmouseout="this.style.background=\''+bg+'\'">'+
+            '<div style="'+dayNumStyle+'">'+badge+d+'</div>'+
             chips+'</div>';
   }
 
   el.innerHTML = html;
   renderCalendarLists(acks, yr, mo);
 
-  // Fetch fresh Google Calendar events
   if(hasUrl()){
     gasCall('getCalendarEvents',{year:yr, month:mo}).then(function(res){
       if(res.ok && Array.isArray(res.events)){
         DB._calEvents = res.events;
-        // Re-render if still on same month
         if(CAL_YEAR===yr && CAL_MONTH===mo) renderCalendar();
       }
     }).catch(function(){});
   }
 }
 
-function renderCalendarLists(acks, yr, mo){
-  const prefix    = yr+'-'+String(mo+1).padStart(2,'0');
-  const monthAcks = acks.filter(function(a){ return String(a.bookDate||'').startsWith(prefix); });
-  const pending   = monthAcks.filter(function(a){ var s=String(a.status||'').toLowerCase(); return !s||s==='pending'||s.includes('pending'); });
-  const confirmed = monthAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); });
 
-  // Google Cal pending events — exclude those already receipted (ack exists for same date + similar name)
-  const calEvents  = (DB._calEvents||[]).filter(function(ev){ return String(ev.start||'').startsWith(prefix); });
-  const calPending = calEvents.filter(function(ev){
+function renderCalendarLists(acks, yr, mo){
+  var prefix    = yr+'-'+String(mo+1).padStart(2,'0');
+  var monthAcks = acks.filter(function(a){ return String(a.bookDate||'').startsWith(prefix); });
+  var today     = todayStr();
+  var pending   = monthAcks.filter(function(a){ var s=String(a.status||'').toLowerCase(); return !s||s==='pending'||s.includes('pending'); }).sort(function(a,b){ return String(a.bookDate).localeCompare(String(b.bookDate)); });
+  var confirmed = monthAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); }).sort(function(a,b){ return String(a.bookDate).localeCompare(String(b.bookDate)); });
+  var calEvents  = (DB._calEvents||[]).filter(function(ev){ return String(ev.start||'').startsWith(prefix); });
+  var calPending = calEvents.filter(function(ev){
     var evDate = String(ev.start||'').slice(0,10);
     var evTitle = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
-    // Extract client name from "Service — Client (₱300 DP)" or use full title
-    var nameMatch   = evTitle.match(/—\s*(.+?)\s*[\(\|]/);
-    var clientName  = (nameMatch ? nameMatch[1] : evTitle).trim().toLowerCase();
-    // Skip if an ack receipt exists for this date
-    var alreadyReceipted = monthAcks.some(function(a){
-      if(String(a.bookDate||'').slice(0,10) !== evDate) return false;
-      // Match by name (partial, case-insensitive)
-      var ackName = String(a.fbName||'').toLowerCase();
-      return ackName.includes(clientName.split(' ')[0]) || clientName.includes(ackName.split(' ')[0]);
+    var nm = evTitle.match(/—\s*(.+?)\s*[\(\|]/);
+    var cn = (nm?nm[1]:evTitle).trim().toLowerCase();
+    var receipted = monthAcks.some(function(a){
+      if(String(a.bookDate||'').slice(0,10)!==evDate) return false;
+      var an=String(a.fbName||'').toLowerCase();
+      return an.includes(cn.split(' ')[0])||cn.includes(an.split(' ')[0]);
     });
-    return ev.status==='pending' && !alreadyReceipted;
+    return ev.status==='pending'&&!receipted;
   });
 
-  const pendEl = document.getElementById('pending-list');
-  const confEl = document.getElementById('confirmed-list');
+  var pendEl = document.getElementById('pending-list');
+  var confEl = document.getElementById('confirmed-list');
+  var pb     = document.getElementById('pending-badge');
+  var cb     = document.getElementById('confirmed-badge');
+  if(pb) pb.textContent = (pending.length+calPending.length)+' need attention';
+  if(cb) cb.textContent = confirmed.length+' this month';
 
+  // ── PENDING ──
   if(pendEl){
-    var pendHtml = '';
-    // Ack receipts pending
-    pending.forEach(function(a){ pendHtml += ackListRow(a,'pending'); });
-    // Google Cal pending events (booking requests not yet turned into receipts)
-    calPending.forEach(function(ev){
-      var name = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
-      var nameMatch = name.match(/—\s*(.+?)\s*\(/);
-      var clientName = nameMatch ? nameMatch[1].trim() : name;
-      var svcMatch   = name.match(/^(.+?)\s*—/);
-      var service    = svcMatch ? svcMatch[1].trim() : '';
-      var date = String(ev.start||'').slice(0,10);
-      var evId = ev.id||'';
-      // Extract email and time from event description
-      var emailMatch = (ev.description||'').match(/Email:\s*(\S+@\S+)/i);
-      var evEmail = emailMatch ? emailMatch[1].trim() : '';
-      var timeMatch  = (ev.description||'').match(/Time:\s*(.+)/i);
-      var evTime  = timeMatch ? timeMatch[1].trim() : '';
-      // Fallback: extract time from ISO start (convert to PHT)
-      if(!evTime && ev.start){
-        try{
-          var d = new Date(ev.start);
-          evTime = d.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});
-        }catch(e){}
-      }
-      pendHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--light2);background:rgba(255,243,205,0.2);">'+
-        '<div style="width:8px;height:8px;border-radius:50%;background:#ffc107;flex-shrink:0;"></div>'+
-        '<div style="flex:1;">'+
-          '<div style="font-weight:600;font-size:13px;">'+escHtml(clientName)+'</div>'+
-          '<div style="font-size:11px;color:var(--muted);">'+
-            '📅 '+date+(evTime?' · 🕐 '+escHtml(evTime):'')+' · '+escHtml(service||'Booking request')+
-            (evEmail?' · ✉ '+escHtml(evEmail):'')+
+    var h = '';
+    pending.forEach(function(a){
+      var daysLeft = Math.ceil((new Date(String(a.bookDate).slice(0,10)+'T00:00:00')-new Date())/86400000);
+      var urg = daysLeft<=1?'color:var(--danger);font-weight:700;':daysLeft<=3?'color:var(--gold);font-weight:600;':'color:var(--muted);';
+      var dayTxt = daysLeft<0?'Past':daysLeft===0?'Today':daysLeft===1?'Tomorrow':daysLeft+' days';
+      h += '<div style="background:rgba(255,243,205,0.35);border:1.5px solid rgba(255,193,7,0.25);border-radius:10px;padding:12px 14px;margin-bottom:10px;">'+
+        '<div style="display:flex;align-items:flex-start;gap:10px;">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:#ffc107;flex-shrink:0;margin-top:5px;"></div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'+
+              '<span style="font-weight:700;font-size:14px;color:var(--slate);">'+escHtml(a.fbName||'')+'</span>'+
+              '<span style="font-size:10px;padding:2px 7px;background:rgba(255,193,7,0.15);color:#856404;border-radius:8px;font-weight:600;">Pending Payment</span>'+
+              (a.ackNum?'<span style="font-size:10px;color:var(--muted);">'+escHtml(a.ackNum)+'</span>':'')+
+            '</div>'+
+            '<div style="font-size:12px;color:var(--muted);line-height:1.7;">'+
+              '📦 '+escHtml(a.service||'—')+'<br>'+
+              '📅 '+escHtml(String(a.bookDate||''))+
+              (a.timeSlot?' · 🕐 '+escHtml(a.timeSlot):'')+
+              ' <span style="'+urg+'">· '+dayTxt+'</span><br>'+
+              '💰 ₱'+fmt(+a.downpayment||0)+' '+escHtml(a.mop||'')+
+              (a.email?' · ✉ '+escHtml(a.email):'')+
+            '</div>'+
           '</div>'+
-        '</div>'+
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
-          '<button class="btn btn-sm btn-teal" data-name="'+encodeURIComponent(clientName)+'" data-date="'+date+'" data-svc="'+encodeURIComponent(service)+'" data-email="'+encodeURIComponent(evEmail)+'" data-time="'+encodeURIComponent(evTime)+'" data-evid="'+encodeURIComponent(evId)+'" onclick="openNewAckFromCalEvent(this)">✉ Confirm & Email</button>'+
-          '<button class="btn btn-sm btn-outline" style="font-size:10px;padding:4px 8px;" data-name="'+encodeURIComponent(clientName)+'" data-date="'+date+'" data-svc="'+encodeURIComponent(service)+'" data-email="'+encodeURIComponent(evEmail)+'" data-time="'+encodeURIComponent(evTime)+'" data-evid="'+encodeURIComponent(evId)+'" onclick="quickConfirmBooking(this)">⚡ Quick</button>'+
+          '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'+
+            '<button class="btn btn-sm btn-teal" data-aid="'+a.id+'" onclick="calConfirmAck(this)" style="white-space:nowrap;">✓ Confirm</button>'+
+            '<button class="btn btn-sm btn-outline" data-aid="'+a.id+'" onclick="calPrintAck(this)" style="font-size:10px;">🖨 Print</button>'+
+          '</div>'+
         '</div>'+
       '</div>';
     });
-    pendEl.innerHTML = pendHtml || '<div class="tm">No pending payments this month.</div>';
+    calPending.forEach(function(ev){
+      var name=ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
+      var nm2=name.match(/—\s*(.+?)\s*\(/); var cn2=nm2?nm2[1].trim():name;
+      var svc2Match=name.match(/^(.+?)\s*—/); var svc2=svc2Match?svc2Match[1].trim():'';
+      var date2=String(ev.start||'').slice(0,10);
+      var evId2=ev.id||'';
+      var em2=(ev.description||'').match(/Email:\s*(\S+@\S+)/i);
+      var evEm2=em2?em2[1].trim():'';
+      var tm2=(ev.description||'').match(/Time:\s*(.+)/i);
+      var evTm2=tm2?tm2[1].trim():'';
+      if(!evTm2&&ev.start){try{var dd=new Date(ev.start);evTm2=dd.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});}catch(e2){}}
+      var dl2=Math.ceil((new Date(date2+'T00:00:00')-new Date())/86400000);
+      var dt2=dl2<0?'Past':dl2===0?'Today':dl2===1?'Tomorrow':dl2+' days';
+      h += '<div style="background:rgba(255,243,205,0.15);border:1.5px dashed rgba(255,193,7,0.35);border-radius:10px;padding:12px 14px;margin-bottom:10px;">'+
+        '<div style="display:flex;align-items:flex-start;gap:10px;">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:#ffc107;flex-shrink:0;margin-top:5px;"></div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'+
+              '<span style="font-weight:700;font-size:14px;color:var(--slate);">'+escHtml(cn2)+'</span>'+
+              '<span style="font-size:10px;padding:2px 7px;background:rgba(255,193,7,0.1);color:#856404;border-radius:8px;">Booking Request</span>'+
+            '</div>'+
+            '<div style="font-size:12px;color:var(--muted);line-height:1.7;">'+
+              '📦 '+escHtml(svc2||'—')+'<br>'+
+              '📅 '+date2+(evTm2?' · 🕐 '+escHtml(evTm2):'')+' <span style="color:'+(dl2<=1?'var(--danger)':dl2<=3?'var(--gold)':'var(--muted)')+';font-weight:600;">· '+dt2+'</span>'+
+              (evEm2?'<br>✉ '+escHtml(evEm2):'')+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;">'+
+            '<button class="btn btn-sm btn-teal" data-name="'+encodeURIComponent(cn2)+'" data-date="'+date2+'" data-svc="'+encodeURIComponent(svc2)+'" data-email="'+encodeURIComponent(evEm2)+'" data-time="'+encodeURIComponent(evTm2)+'" data-evid="'+encodeURIComponent(evId2)+'" onclick="openNewAckFromCalEvent(this)" style="font-size:10px;white-space:nowrap;">✉ Confirm & Email</button>'+
+            (evEm2?'<button class="btn btn-sm btn-outline" data-name="'+encodeURIComponent(cn2)+'" data-date="'+date2+'" data-svc="'+encodeURIComponent(svc2)+'" data-email="'+encodeURIComponent(evEm2)+'" data-time="'+encodeURIComponent(evTm2)+'" data-evid="'+encodeURIComponent(evId2)+'" onclick="quickConfirmBooking(this)" style="font-size:10px;">⚡ Quick</button>':'')+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    });
+    pendEl.innerHTML = h || '<div class="tm" style="padding:20px;">✅ No pending bookings this month.</div>';
   }
 
+  // ── CONFIRMED ──
   if(confEl){
-    const confHtml = confirmed.map(function(a){ return ackListRow(a,'confirmed'); }).join('');
-    confEl.innerHTML = confHtml || '<div class="tm">No confirmed bookings this month.</div>';
+    if(!confirmed.length){ confEl.innerHTML='<div class="tm" style="padding:20px;">No confirmed bookings this month.</div>'; }
+    else {
+      var ch = '<div style="display:grid;gap:8px;">';
+      confirmed.forEach(function(a){
+        var past = String(a.bookDate||'')<todayStr();
+        ch += '<div style="background:rgba(212,237,218,0.2);border:1px solid rgba(81,137,125,0.15);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;opacity:'+(past?'0.6':'1')+';"><div style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;"></div>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-weight:600;font-size:13px;color:var(--slate);">'+escHtml(a.fbName||'')+'</div>'+
+            '<div style="font-size:11px;color:var(--muted);">'+escHtml(String(a.bookDate||''))+
+            (a.timeSlot?' · 🕐 '+escHtml(a.timeSlot):'')+' · '+escHtml(a.service||'—')+'</div>'+
+          '</div>'+
+          '<div style="font-size:11px;font-weight:600;color:var(--teal);white-space:nowrap;">₱'+fmt(+a.downpayment||0)+'</div>'+
+          '<button class="btn btn-sm btn-outline" data-aid="'+a.id+'" onclick="calPrintAck(this)" style="font-size:10px;padding:4px 8px;">🖨</button>'+
+        '</div>';
+      });
+      ch += '</div>';
+      confEl.innerHTML = ch;
+    }
   }
+
+  // ── TIME DISTRIBUTION CHART ──
+  renderTimeDistribution(monthAcks, calEvents.filter(function(ev){ return !ev.status || ev.status==='pending'||ev.status==='confirmed'; }));
+}
+
+function renderTimeDistribution(monthAcks, calEvs){
+  var el = document.getElementById('time-dist-chart');
+  if(!el) return;
+
+  var ALL_SLOTS_DIST = ['10:00 AM','10:45 AM','11:30 AM','12:15 PM','1:00 PM','1:45 PM','2:30 PM','3:15 PM','4:00 PM','4:45 PM','5:30 PM'];
+
+  // Count bookings per slot from acknowledgements
+  var counts = {};
+  ALL_SLOTS_DIST.forEach(function(s){ counts[s] = {pending:0, confirmed:0, total:0}; });
+
+  monthAcks.forEach(function(a){
+    var slot = String(a.timeSlot||'').trim();
+    if(!slot) return;
+    if(!counts[slot]) counts[slot] = {pending:0, confirmed:0, total:0};
+    var status = String(a.status||'').toLowerCase();
+    var isCancelled = status.includes('cancel');
+    if(isCancelled) return;
+    if(status.includes('confirm')) counts[slot].confirmed++;
+    else counts[slot].pending++;
+    counts[slot].total++;
+  });
+
+  // Also count from calendar events
+  calEvs.forEach(function(ev){
+    var evTime = '';
+    var tmMatch = (ev.description||'').match(/Time:\s*(.+)/i);
+    if(tmMatch) evTime = tmMatch[1].trim();
+    if(!evTime && ev.start){
+      try{
+        var dd = new Date(ev.start);
+        evTime = dd.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});
+      }catch(e){}
+    }
+    if(!evTime) return;
+    if(!counts[evTime]) counts[evTime] = {pending:0, confirmed:0, total:0};
+    counts[evTime].pending++;
+    counts[evTime].total++;
+  });
+
+  var maxCount = Math.max.apply(null, ALL_SLOTS_DIST.map(function(s){ return counts[s]?counts[s].total:0; }));
+  if(maxCount === 0){ el.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px;">No bookings data this month.</div>'; return; }
+
+  var h = '<div style="display:grid;gap:6px;">';
+  ALL_SLOTS_DIST.forEach(function(slot){
+    var c = counts[slot]||{pending:0,confirmed:0,total:0};
+    var pct = maxCount > 0 ? Math.round((c.total/maxCount)*100) : 0;
+    var confPct = c.total > 0 ? Math.round((c.confirmed/c.total)*100) : 0;
+    var pendPct = 100 - confPct;
+    var isTop = c.total === maxCount && maxCount > 0;
+
+    h += '<div style="display:flex;align-items:center;gap:10px;">'+
+      '<div style="font-size:11px;font-weight:600;color:var(--muted);min-width:70px;text-align:right;flex-shrink:0;">'+slot+'</div>'+
+      '<div style="flex:1;position:relative;">'+
+        '<div style="height:22px;border-radius:4px;background:var(--light);overflow:hidden;position:relative;">'+
+          (pct > 0 ?
+            '<div style="position:absolute;left:0;top:0;height:100%;width:'+pct+'%;display:flex;overflow:hidden;border-radius:4px;">'+
+              (c.confirmed > 0 ? '<div style="height:100%;width:'+confPct+'%;background:var(--teal);"></div>' : '')+
+              (c.pending   > 0 ? '<div style="height:100%;width:'+pendPct+'%;background:#ffc107;"></div>' : '')+
+            '</div>' : '')+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:6px;min-width:80px;flex-shrink:0;">'+
+        '<span style="font-size:12px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+c.total+'</span>'+
+        '<span style="font-size:10px;color:var(--muted);">booking'+(c.total!==1?'s':'')+'</span>'+
+        (isTop&&c.total>0?'<span style="font-size:10px;background:rgba(215,144,104,0.12);color:var(--gold);padding:1px 6px;border-radius:8px;font-weight:700;">★ Top</span>':'')+
+      '</div>'+
+    '</div>';
+  });
+  h += '</div>';
+  h += '<div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--light2);">'+
+    '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Confirmed</span>'+
+    '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#ffc107;display:inline-block;"></span>Pending payment</span>'+
+  '</div>';
+
+  el.innerHTML = h;
 }
 
 function ackListRow(a, type){
@@ -2995,24 +3229,198 @@ function calNavToday(){
 }
 
 function calDayClick(dateStr){
-  var acks = (DB.acknowledgements||[]).filter(function(a){ return a.bookDate===dateStr; });
-  if(!acks.length) return;
-  var html = '<h3 style="margin-bottom:12px;">📅 '+dateStr+'</h3>';
+  var panel  = document.getElementById('cal-day-panel');
+  var title  = document.getElementById('day-panel-title');
+  var body   = document.getElementById('day-panel-content');
+  if(!panel || !title || !body) { return; }
+
+  var acks = (DB.acknowledgements||[]).filter(function(a){ return String(a.bookDate||'').slice(0,10)===dateStr; });
+  var evs  = (DB._calEvents||[]).filter(function(ev){ return String(ev.start||'').slice(0,10)===dateStr; });
+  var blocked = (DB.blockedDates||[]).filter(function(b){ return b.date===dateStr; });
+
+  // Format date nicely
+  var d = new Date(dateStr+'T00:00:00');
+  var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var monNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var isToday = dateStr === todayStr();
+  title.innerHTML = dayNames[d.getDay()]+', '+monNames[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()+
+    (isToday?' <span style="font-size:11px;background:var(--teal);color:#fff;padding:2px 8px;border-radius:8px;margin-left:6px;vertical-align:middle;">Today</span>':'');
+
+  if(!acks.length && !evs.length && !blocked.length){
+    body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px;">No bookings on this date.</div>';
+    panel.style.display = '';
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    return;
+  }
+
+  var h = '';
+
+  // ── TIME SLOT AVAILABILITY GRID ──
+  var ALL_SLOTS_CAL = ['10:00 AM','10:45 AM','11:30 AM','12:15 PM','1:00 PM','1:45 PM','2:30 PM','3:15 PM','4:00 PM','4:45 PM','5:30 PM'];
+
+  // Build a map of slot → booking info
+  var slotMap = {};
   acks.forEach(function(a){
-    var isPending = !a.status || String(a.status||'').toLowerCase().includes('pending');
-    html += '<div style="background:var(--light);border-radius:8px;padding:12px 14px;margin-bottom:8px;">'+
-      '<div style="font-weight:600;">'+escHtml(a.fbName||'')+'</div>'+
-      '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+escHtml(a.service||'—')+' · ₱'+fmt(+a.downpayment||0)+' '+escHtml(a.mop||'')+'</div>'+
-      '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Status: '+(a.status||'Pending')+'</div>'+
-      '<div style="display:flex;gap:6px;margin-top:8px;">'+
-        (isPending ? '<button class="btn btn-sm btn-teal" data-aid="'+a.id+'" onclick="calConfirmAck(this)">✓ Confirm</button>' : '')+
-        '<button class="btn btn-sm btn-outline" data-aid="'+a.id+'" onclick="calPrintAck(this)">🖨 Print</button>'+
-        '<button class="btn btn-sm btn-danger" data-aid="'+a.id+'" onclick="calDeleteAck(this)">✕ Delete</button>'+
+    var slot = a.timeSlot||'';
+    if(!slot) return;
+    var status = String(a.status||'').toLowerCase();
+    var isCancelled = status.includes('cancel');
+    if(!isCancelled){
+      slotMap[slot] = {
+        name: a.fbName||'',
+        service: a.service||'',
+        status: status.includes('confirm')?'confirmed':'pending',
+        source: 'receipt'
+      };
+    }
+  });
+
+  // Also map Google Calendar events
+  evs.forEach(function(ev){
+    if(ev.status==='cancelled') return;
+    var evTm2 = '';
+    var tmMatch = (ev.description||'').match(/Time:\s*(.+)/i);
+    if(tmMatch) evTm2 = tmMatch[1].trim();
+    if(!evTm2 && ev.start){
+      try{
+        var dd = new Date(ev.start);
+        evTm2 = dd.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});
+      }catch(e2){}
+    }
+    if(evTm2 && !slotMap[evTm2]){
+      var nm = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
+      var nmM = nm.match(/—\s*(.+?)\s*[\(\|]/);
+      var cn2 = nmM?nmM[1].trim():nm;
+      var svcM = nm.match(/^(.+?)\s*—/);
+      slotMap[evTm2] = {
+        name: cn2,
+        service: svcM?svcM[1].trim():'',
+        status: ev.status==='confirmed'?'confirmed':'pending',
+        source: 'calendar'
+      };
+    }
+  });
+
+  // Is the day fully blocked?
+  var fullBlocked = blocked.some(function(b){ return !b.slots||!b.slots.length; });
+
+  h += '<div style="margin-bottom:16px;">';
+  h += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Time Slot Availability</div>';
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;">';
+
+  ALL_SLOTS_CAL.forEach(function(slot){
+    var booking = slotMap[slot];
+    var isBlocked2 = fullBlocked || blocked.some(function(b){ return b.slots&&b.slots.includes(slot); });
+
+    if(isBlocked2){
+      h += '<div style="padding:8px 10px;border-radius:8px;background:rgba(180,180,180,0.15);border:1px solid #ccc;font-size:11px;">'+
+        '<div style="font-weight:600;color:#999;">'+slot+'</div>'+
+        '<div style="font-size:10px;color:#aaa;margin-top:2px;">🚫 Blocked</div>'+
+      '</div>';
+    } else if(booking){
+      var col = booking.status==='confirmed'?'rgba(81,137,125,0.08)':'rgba(255,243,205,0.5)';
+      var bdr = booking.status==='confirmed'?'rgba(81,137,125,0.3)':'rgba(255,193,7,0.5)';
+      var txt = booking.status==='confirmed'?'var(--teal)':'#856404';
+      var dot = booking.status==='confirmed'?'🟢':'🟡';
+      h += '<div style="padding:8px 10px;border-radius:8px;background:'+col+';border:1.5px solid '+bdr+';font-size:11px;">'+
+        '<div style="font-weight:700;color:var(--slate);">'+slot+'</div>'+
+        '<div style="font-size:10px;font-weight:600;color:'+txt+';margin-top:2px;">'+dot+' '+escHtml(booking.name.split(' ')[0])+'</div>'+
+        '<div style="font-size:9px;color:var(--muted);margin-top:1px;">'+escHtml(booking.service.slice(0,18)||(booking.service||''))+'</div>'+
+      '</div>';
+    } else {
+      h += '<div style="padding:8px 10px;border-radius:8px;background:rgba(61,140,110,0.04);border:1.5px solid rgba(61,140,110,0.15);font-size:11px;">'+
+        '<div style="font-weight:600;color:var(--muted);">'+slot+'</div>'+
+        '<div style="font-size:10px;color:var(--success);margin-top:2px;">✓ Available</div>'+
+      '</div>';
+    }
+  });
+
+  h += '</div>';
+
+  // Legend
+  h += '<div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;">'+
+    '<span style="font-size:10px;color:var(--muted);">🟡 Pending payment</span>'+
+    '<span style="font-size:10px;color:var(--muted);">🟢 Confirmed</span>'+
+    '<span style="font-size:10px;color:var(--muted);">✓ Available</span>'+
+    '<span style="font-size:10px;color:var(--muted);">🚫 Blocked</span>'+
+  '</div>';
+
+  h += '</div><hr style="border:none;border-top:1px solid var(--light2);margin:12px 0;">';
+
+  // Blocked indicator
+  if(blocked.length){
+    h += '<div style="background:rgba(180,180,180,0.15);border:1px solid #ccc;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:#666;">🚫 <strong>Blocked:</strong> '+escHtml(blocked[0].reason||'Studio closed')+'</div>';
+  }
+
+  // Acknowledgement receipts — sorted by time
+  acks.slice().sort(function(a,b){ return String(a.timeSlot||'').localeCompare(String(b.timeSlot||'')); }).forEach(function(a){
+    var status = String(a.status||'').toLowerCase();
+    var isPending   = !status || status.includes('pending');
+    var isConfirmed = status.includes('confirm');
+    var isCancelled = status.includes('cancel');
+    var dot = isPending?'#ffc107':isConfirmed?'var(--teal)':'var(--danger)';
+    var label = isPending?'Pending':isConfirmed?'Confirmed':'Cancelled';
+    h += '<div style="background:var(--light);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid '+dot+';">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'+
+            '<span style="font-weight:700;font-size:14px;color:var(--slate);">'+escHtml(a.fbName||'')+'</span>'+
+            '<span style="font-size:10px;padding:2px 8px;background:'+dot+';color:#fff;border-radius:8px;font-weight:600;">'+label+'</span>'+
+            (a.ackNum?'<span style="font-size:10px;color:var(--muted);">'+escHtml(a.ackNum)+'</span>':'')+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--muted);line-height:1.8;">'+
+            (a.timeSlot?'🕐 <strong>'+escHtml(a.timeSlot)+'</strong> · ':'')+escHtml(a.service||'—')+'<br>'+
+            '₱'+fmt(+a.downpayment||0)+' downpayment · '+escHtml(a.mop||'')+(a.email?' · ✉ '+escHtml(a.email):'')+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'+
+          (isPending?'<button class="btn btn-sm btn-teal" data-aid="'+a.id+'" onclick="calConfirmAck(this)" style="font-size:11px;">✓ Confirm</button>':'')+
+          '<button class="btn btn-sm btn-outline" data-aid="'+a.id+'" onclick="calPrintAck(this)" style="font-size:11px;">🖨 Print</button>'+
+        '</div>'+
       '</div>'+
     '</div>';
   });
-  html += '<div class="fe"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>';
-  openModal(html);
+
+  // Google Calendar pending events not yet receipted
+  evs.filter(function(ev){ return ev.status==='pending'; }).forEach(function(ev){
+    var nm = ev.title.replace(/\[PENDING\]/gi,'').replace(/\[CONFIRMED\]/gi,'').trim();
+    var nmMatch = nm.match(/—\s*(.+?)\s*[\(\|]/);
+    var cn = nmMatch?nmMatch[1].trim():nm;
+    var svcMatch = nm.match(/^(.+?)\s*—/);
+    var svc = svcMatch?svcMatch[1].trim():'';
+    var alreadyReceipated = acks.some(function(a){
+      var an = String(a.fbName||'').toLowerCase();
+      return an.includes(cn.toLowerCase().split(' ')[0]) || cn.toLowerCase().includes(an.split(' ')[0]);
+    });
+    if(alreadyReceipated) return;
+    var em = (ev.description||'').match(/Email:\s*(\S+@\S+)/i);
+    var evEm = em?em[1].trim():'';
+    var tm = (ev.description||'').match(/Time:\s*(.+)/i);
+    var evTm = tm?tm[1].trim():'';
+    if(!evTm&&ev.start){try{var dd=new Date(ev.start);evTm=dd.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});}catch(e2){}}
+    h += '<div style="background:rgba(255,243,205,0.3);border:1.5px dashed #ffc107;border-radius:10px;padding:12px 14px;margin-bottom:8px;">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px;">'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">'+
+            '<span style="font-weight:700;font-size:14px;color:var(--slate);">'+escHtml(cn)+'</span>'+
+            '<span style="font-size:10px;padding:2px 8px;background:#ffc107;color:#3d2000;border-radius:8px;font-weight:600;">Booking Request</span>'+
+          '</div>'+
+          '<div style="font-size:12px;color:var(--muted);line-height:1.8;">'+
+            (evTm?'🕐 <strong>'+escHtml(evTm)+'</strong> · ':'')+escHtml(svc||'—')+
+            (evEm?'<br>✉ '+escHtml(evEm):'')+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">'+
+          '<button class="btn btn-sm btn-teal" data-name="'+encodeURIComponent(cn)+'" data-date="'+dateStr+'" data-svc="'+encodeURIComponent(svc)+'" data-email="'+encodeURIComponent(evEm)+'" data-time="'+encodeURIComponent(evTm)+'" data-evid="'+encodeURIComponent(ev.id||'')+'" onclick="openNewAckFromCalEvent(this)" style="font-size:10px;white-space:nowrap;">✉ Confirm & Email</button>'+
+          (evEm?'<button class="btn btn-sm btn-outline" data-name="'+encodeURIComponent(cn)+'" data-date="'+dateStr+'" data-svc="'+encodeURIComponent(svc)+'" data-email="'+encodeURIComponent(evEm)+'" data-time="'+encodeURIComponent(evTm)+'" data-evid="'+encodeURIComponent(ev.id||'')+'" onclick="quickConfirmBooking(this)" style="font-size:10px;">⚡ Quick</button>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  });
+
+  body.innerHTML = h;
+  panel.style.display = '';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function calConfirmAck(btn){ var id=btn.dataset.aid; confirmAck(id); closeModal(); }
@@ -6627,7 +7035,7 @@ function setRepMode(mode){
 
 function setRepCat(cat){
   CUR_REP_CAT = cat;
-  ['financial','clients','packages','operations'].forEach(c=>{
+  ['financial','clients','packages','operations','bookings'].forEach(c=>{
     const el  = document.getElementById('rep-cat-'+c);
     const btn = document.getElementById('rcat-'+c);
     if(el)  el.style.display = c===cat ? '' : 'none';
@@ -6652,6 +7060,8 @@ function openPrintCenter(){
     {id:'pc-registrations', label:'Registration List',        desc:'All check-ins with time and SM consent',           cat:'clients',   checked:false},
     {id:'pc-arrival',       label:'Arrival Type Summary',     desc:'Walk-in vs booked breakdown',                      cat:'clients',   checked:false},
     {id:'pc-heatmap',       label:'Time Heatmap',             desc:'Peak session hours in PHT',                        cat:'clients',   checked:false},
+    {id:'pc-slot-dist',     label:'Booking Slot Distribution',desc:'Most popular time slots booked this month',        cat:'packages',  checked:true },
+    {id:'pc-submit-time',   label:'Booking Submission Times', desc:'What time of day clients submit booking requests',  cat:'clients',   checked:true },
     {id:'pc-tasks',         label:'Task Summary',             desc:'Delivered, pending, EOD count',                    cat:'operations',checked:false},
     {id:'pc-transfers',     label:'Fund Transfers & Refunds', desc:'Cash to bank and client refunds',                  cat:'operations',checked:false},
   ];
@@ -7011,12 +7421,188 @@ function _buildReports(prefixes, label){
   renderClientsReport(regs, txnMap, ackMap, label, prefixes);
   renderPackagesReport(txns, regs, txnMap, ackMap, label);
   renderOperationsReport(txns, eods, allFT, gifts, label);
+  renderBookingsReport(acks, DB.bookings||[], prefixes, label);
   notify('Reports generated for '+label,'success');
 }
 
 // ════════════════════════════════
-// FINANCIAL
+// BOOKINGS ANALYTICS
 // ════════════════════════════════
+function renderBookingsReport(acks, bookings, prefixes, label){
+  var ALL_SLOTS_REP = ['10:00 AM','10:45 AM','11:30 AM','12:15 PM','1:00 PM','1:45 PM','2:30 PM','3:15 PM','4:00 PM','4:45 PM','5:30 PM'];
+  var HOUR_LABELS   = ['12am','1am','2am','3am','4am','5am','6am','7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm'];
+  var DOW_LABELS    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  // Filter acks to period
+  var periodAcks = acks.filter(function(a){
+    return prefixes.some(function(p){ return String(a.bookDate||'').startsWith(p); });
+  });
+
+  // Filter bookings (Bookings sheet) to period by submitted date
+  var periodBk = bookings.filter(function(b){
+    var d = String(b.submitted||b.date||'').slice(0,10);
+    return prefixes.some(function(p){ return d.startsWith(p); });
+  });
+
+  // Stats
+  var total     = periodAcks.length;
+  var confirmed = periodAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); }).length;
+  var cancelled = periodAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('cancel'); }).length;
+  var pending   = total - confirmed - cancelled;
+
+  var bkTotal = document.getElementById('bk-total');
+  var bkConf  = document.getElementById('bk-confirmed');
+  var bkPend  = document.getElementById('bk-pending');
+  var bkCanc  = document.getElementById('bk-cancelled');
+  if(bkTotal) bkTotal.innerHTML = '<div class="rs-label">Total Bookings</div><div class="rs-val">'+total+'</div>';
+  if(bkConf)  bkConf.innerHTML  = '<div class="rs-label">Confirmed</div><div class="rs-val rs-teal">'+confirmed+'</div>';
+  if(bkPend)  bkPend.innerHTML  = '<div class="rs-label">Pending Payment</div><div class="rs-val rs-gold">'+pending+'</div>';
+  if(bkCanc)  bkCanc.innerHTML  = '<div class="rs-label">Cancelled</div><div class="rs-val rs-danger">'+cancelled+'</div>';
+
+  // ── CHART 1: Time slot distribution ──
+  var slotCounts = {};
+  ALL_SLOTS_REP.forEach(function(s){ slotCounts[s]={confirmed:0,pending:0,total:0}; });
+  periodAcks.forEach(function(a){
+    var slot = String(a.timeSlot||'').trim();
+    if(!slot) return;
+    if(!slotCounts[slot]) slotCounts[slot]={confirmed:0,pending:0,total:0};
+    var st = String(a.status||'').toLowerCase();
+    if(st.includes('cancel')) return;
+    if(st.includes('confirm')) slotCounts[slot].confirmed++;
+    else slotCounts[slot].pending++;
+    slotCounts[slot].total++;
+  });
+  var maxSlot = Math.max.apply(null, ALL_SLOTS_REP.map(function(s){ return slotCounts[s]?slotCounts[s].total:0; }));
+  var slotEl = document.getElementById('rep-slot-chart');
+  if(slotEl){
+    if(maxSlot===0){ slotEl.innerHTML='<div class="tm">No booking slot data for this period.</div>'; }
+    else {
+      var sh = '<div style="display:grid;gap:6px;">';
+      ALL_SLOTS_REP.forEach(function(slot){
+        var c = slotCounts[slot]||{confirmed:0,pending:0,total:0};
+        var pct = Math.round((c.total/maxSlot)*100);
+        var isTop = c.total===maxSlot&&c.total>0;
+        sh += '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<div style="font-size:11px;font-weight:600;color:var(--muted);min-width:72px;text-align:right;flex-shrink:0;">'+slot+'</div>'+
+          '<div style="flex:1;height:22px;border-radius:4px;background:var(--light);overflow:hidden;position:relative;">'+
+            (pct>0?'<div style="position:absolute;left:0;top:0;height:100%;width:'+pct+'%;display:flex;overflow:hidden;border-radius:4px;">'+
+              (c.confirmed>0?'<div style="height:100%;flex:'+c.confirmed+';background:var(--teal);"></div>':'')+
+              (c.pending>0?'<div style="height:100%;flex:'+c.pending+';background:#ffc107;"></div>':'')+
+            '</div>':'')+
+          '</div>'+
+          '<div style="min-width:90px;display:flex;align-items:center;gap:5px;flex-shrink:0;">'+
+            '<span style="font-size:13px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+c.total+'</span>'+
+            '<span style="font-size:10px;color:var(--muted);">booking'+(c.total!==1?'s':'')+'</span>'+
+            (isTop&&c.total>0?'<span style="font-size:9px;background:rgba(215,144,104,0.12);color:var(--gold);padding:1px 5px;border-radius:6px;font-weight:700;">★</span>':'')+
+          '</div>'+
+        '</div>';
+      });
+      sh += '</div>';
+      sh += '<div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--light2);">'+
+        '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Confirmed</span>'+
+        '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#ffc107;display:inline-block;"></span>Pending payment</span>'+
+      '</div>';
+      slotEl.innerHTML = sh;
+    }
+  }
+
+  // ── CHART 2: Submission hour distribution (from Bookings sheet) ──
+  var hourCounts = new Array(24).fill(0);
+  var hasSubmitData = false;
+  periodBk.forEach(function(b){
+    var sub = b.submitted;
+    if(!sub) return;
+    var dt = sub instanceof Date ? sub : new Date(String(sub));
+    if(isNaN(dt.getTime())) return;
+    // Convert to Manila time
+    var manilaHour = (dt.getUTCHours() + 8) % 24;
+    hourCounts[manilaHour]++;
+    hasSubmitData = true;
+  });
+
+  var subEl = document.getElementById('rep-submit-chart');
+  if(subEl){
+    if(!hasSubmitData){ subEl.innerHTML='<div class="tm">No submission time data. Make sure Code.gs is updated and redeployed.</div>'; }
+    else {
+      var maxHour = Math.max.apply(null, hourCounts);
+      // Group into 4-hour blocks for cleaner display
+      var blocks = [];
+      for(var h=0; h<24; h+=2){
+        blocks.push({
+          label: HOUR_LABELS[h]+' – '+HOUR_LABELS[(h+2)%24],
+          count: hourCounts[h]+(hourCounts[h+1]||0),
+          hours: [h, h+1]
+        });
+      }
+      var maxBlock = Math.max.apply(null, blocks.map(function(b){ return b.count; }));
+      var topIdx = blocks.reduce(function(best,b,i){ return b.count>blocks[best].count?i:best; }, 0);
+
+      var subH = '<div style="display:grid;gap:6px;">';
+      blocks.forEach(function(blk, i){
+        var pct = maxBlock>0 ? Math.round((blk.count/maxBlock)*100) : 0;
+        var isTop = i===topIdx && blk.count>0;
+        var isPeak = (blk.hours[0]>=18&&blk.hours[0]<=23)||(blk.hours[0]>=6&&blk.hours[0]<=9);
+        subH += '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<div style="font-size:10px;font-weight:600;color:var(--muted);min-width:90px;text-align:right;flex-shrink:0;white-space:nowrap;">'+blk.label+'</div>'+
+          '<div style="flex:1;height:20px;border-radius:4px;background:var(--light);overflow:hidden;">'+
+            (pct>0?'<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(isTop?'var(--gold)':isPeak?'var(--teal)':'var(--slate)')+'25;"></div>':'')+
+            (pct>0?'<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(isTop?'var(--gold)':isPeak?'var(--teal)':'rgba(47,79,79,.25)')+';margin-top:-20px;"></div>':'')+
+          '</div>'+
+          '<div style="min-width:60px;display:flex;align-items:center;gap:5px;flex-shrink:0;">'+
+            '<span style="font-size:12px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+blk.count+'</span>'+
+            (isTop?'<span style="font-size:9px;background:rgba(215,144,104,0.12);color:var(--gold);padding:1px 5px;border-radius:6px;font-weight:700;">Peak</span>':'')+
+          '</div>'+
+        '</div>';
+      });
+      subH += '</div>';
+
+      // Insight
+      var peakBlock = blocks[topIdx];
+      subH += '<div style="margin-top:12px;padding:10px 14px;background:rgba(81,137,125,0.06);border-radius:8px;font-size:12px;color:var(--teal);">'+
+        '💡 Most bookings are submitted between <strong>'+peakBlock.label+'</strong> ('+peakBlock.count+' submission'+(peakBlock.count!==1?'s':'')+'). Consider running promos during this window.'+
+      '</div>';
+
+      subEl.innerHTML = subH;
+    }
+  }
+
+  // ── CHART 3: Day of week ──
+  var dowCounts = [0,0,0,0,0,0,0]; // Mon=0 … Sun=6
+  periodBk.forEach(function(b){
+    var sub = b.submitted;
+    if(!sub) return;
+    var dt = sub instanceof Date ? sub : new Date(String(sub));
+    if(isNaN(dt.getTime())) return;
+    var dow = (dt.getDay()+6)%7; // JS Sun=0 → Mon=0
+    dowCounts[dow]++;
+  });
+  var dowEl = document.getElementById('rep-dow-chart');
+  if(dowEl){
+    var maxDow = Math.max.apply(null, dowCounts);
+    if(maxDow===0){ dowEl.innerHTML='<div class="tm">No submission data for this period.</div>'; }
+    else {
+      var dowH = '<div style="display:flex;gap:8px;align-items:flex-end;justify-content:center;height:100px;margin-bottom:8px;">';
+      DOW_LABELS.forEach(function(lbl,i){
+        var pct  = Math.round((dowCounts[i]/maxDow)*100);
+        var isTop = dowCounts[i]===maxDow&&dowCounts[i]>0;
+        var isSun = i===6;
+        dowH += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'+
+          '<div style="font-size:10px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+dowCounts[i]+'</div>'+
+          '<div style="width:100%;border-radius:4px 4px 0 0;background:'+(isSun?'rgba(192,84,74,0.2)':isTop?'var(--gold)':'var(--teal)')+';height:'+Math.max(pct,4)+'px;transition:height .3s;"></div>'+
+          '<div style="font-size:10px;color:'+(isSun?'var(--danger)':'var(--muted)')+';font-weight:600;">'+lbl+'</div>'+
+        '</div>';
+      });
+      dowH += '</div>';
+
+      // Insight
+      var topDowIdx = dowCounts.reduce(function(best,c,i){ return c>dowCounts[best]?i:best; }, 0);
+      dowH += '<div style="font-size:12px;padding:10px 14px;background:rgba(81,137,125,0.06);border-radius:8px;color:var(--teal);">'+
+        '💡 Clients most often book on <strong>'+DOW_LABELS[topDowIdx]+'</strong>. Schedule promos or reminders the night before.'+
+      '</div>';
+      dowEl.innerHTML = dowH;
+    }
+  }
+}
 function renderFinancialReport(txns, allExp, allFT, eods, label){
   const totalRev  = txns.reduce((s,t)=>s+(+t.total||0),0);
   const totalExp  = allExp.reduce((s,e)=>s+(+e.amt||0),0);
@@ -8154,7 +8740,27 @@ function dismissBookingAlert(){
   if(u){ localStorage.setItem('cl_url', u); location.replace(location.pathname); }
 })();
 
+
+var _lastSaveTime = 0;
+async function silentSync(){
+  if(!hasUrl()) return;
+  if(Date.now()-_lastSaveTime < 15000) return;
+  var deletedIds = JSON.parse(localStorage.getItem('cl_tasks_deleted')||'[]');
+  try{
+    var r = await gasCall('getAll');
+    if(r&&r.ok&&Array.isArray(r.tasks)){
+      var nJ=JSON.stringify(r.tasks.map(function(t){return t.id+(t.stage||'')+(t.updatedAt||'');}).sort());
+      var oJ=JSON.stringify((TASKS||[]).map(function(t){return t.id+(t.stage||'')+(t.updatedAt||'');}).sort());
+      if(nJ!==oJ){ TASKS=r.tasks.filter(function(t){return deletedIds.indexOf(t.id)===-1;}); saveTasks&&saveTasks(); }
+    }
+  }catch(e){}
+}
+function startAutoSync(){
+  setInterval(function(){ if(hasUrl()&&document.visibilityState==='visible') silentSync(); }, 30000);
+}
+
 loadLocal();
+startAutoSync();
 populateLoginStaff();
 updateClientDatalist();
 // If no staff in DB, default to admin tab so you can log in and add staff
