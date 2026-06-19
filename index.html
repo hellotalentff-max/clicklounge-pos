@@ -39,7 +39,7 @@ body { font-family:'Poppins',sans-serif; background:var(--light); color:var(--te
 
 /* ── APP LAYOUT ── */
 #app { display:flex; min-height:100vh; }
-#sidebar { width:var(--sidebar-w); background:var(--slate); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; z-index:100; }
+#sidebar { width:var(--sidebar-w); background:var(--slate); display:flex; flex-direction:column; position:fixed; top:0; left:0; height:100vh; z-index:100; overflow-y:auto; }
 #sidebar-logo { padding:18px 16px 14px; border-bottom:1px solid rgba(255,255,255,0.08); }
 #sidebar-logo h1 { font-size:13px; font-weight:700; color:var(--gold); letter-spacing:1.5px; text-transform:uppercase; }
 #sidebar-logo p { font-size:9px; color:var(--teal-lt); letter-spacing:2.5px; text-transform:uppercase; margin-top:2px; font-weight:300; }
@@ -1225,56 +1225,34 @@ tr:hover td { background:var(--light); }
   </div>
 </div>
 
-<!-- CLIENTS -->
+<!-- CLIENTS — CRM DASHBOARD -->
 <div id="page-clients" class="page">
   <div class="ph">
-    <div><h2>ClickCard &amp; Client Hub</h2><p>Loyalty points, CRM records and client history</p></div>
+    <div><h2>ClickCard CRM</h2><p>Client intelligence &amp; engagement analytics</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-sm btn-outline" onclick="runSyncClients()" title="Scan all sheets and auto-fill missing client records">🔄 Sync</button>
-      <button class="btn btn-sm btn-outline" onclick="openImportClients()">📥 Import</button>
+      <button class="btn btn-sm btn-outline" onclick="runSyncClients()">🔄 Sync Clients</button>
       <button class="btn btn-sm btn-outline" onclick="recalcAllPoints()">🏅 Recalc Points</button>
-      <button class="btn btn-gold" onclick="openCRMCompose()">✉ Campaign</button>
     </div>
   </div>
 
-  <!-- Tier summary bar -->
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;" id="cl-tier-bar"></div>
+  <!-- Big CRM button -->
+  <a href="https://hellotalentff-max.github.io/clicklounge-clickcard/" target="_blank" style="display:block;text-decoration:none;background:linear-gradient(135deg,var(--dark),#3a6b60);border-radius:16px;padding:28px 32px;margin-bottom:20px;overflow:hidden;position:relative;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">⭐ ClickCard Client Hub</div>
+        <div style="font-size:22px;font-weight:800;color:var(--cream);margin-bottom:4px;">Open Full CRM</div>
+        <div style="font-size:13px;color:rgba(245,240,232,.5);">Search all clients · Manage points · Log activity · Send campaigns</div>
+      </div>
+      <div style="font-size:42px;color:var(--gold);font-weight:800;opacity:.8;">→</div>
+    </div>
+  </a>
 
-  <!-- Search + Filter row -->
-  <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-    <input class="sinput" style="flex:1;min-width:200px;" type="text" id="cl-search" placeholder="Search by name, email, phone…" oninput="renderClients()">
-    <select class="sinput" style="width:160px;" id="cl-filter" onchange="renderClients()">
-      <option value="all">All Clients</option>
-      <optgroup label="— Tier —">
-        <option value="tier-gold">👑 Gold VIP</option>
-        <option value="tier-silver">💎 Silver</option>
-        <option value="tier-bronze">⭐ Bronze</option>
-        <option value="tier-new">🆕 New (not yet visited)</option>
-      </optgroup>
-      <optgroup label="— Type —">
-        <option value="walkin">Walk-in only</option>
-        <option value="booked">Booked only</option>
-      </optgroup>
-      <optgroup label="— Status —">
-        <option value="smc-yes">SM Consent ✅</option>
-        <option value="smc-no">SM No Consent 🚫</option>
-        <option value="at-risk">At Risk (60d+)</option>
-        <option value="birthday-month">🎂 Birthday This Month</option>
-      </optgroup>
-    </select>
-    <select class="sinput" style="width:140px;" id="cl-sort" onchange="renderClients()">
-      <option value="alpha">A → Z</option>
-      <option value="points">Most Points</option>
-      <option value="sessions">Most Sessions</option>
-      <option value="spent">Most Spent</option>
-      <option value="recent">Recent First</option>
-    </select>
-    <div id="cl-count" style="font-size:12px;color:var(--muted);white-space:nowrap;"></div>
+  <!-- CRM Dashboard -->
+  <div id="crm-dashboard">
+    <div style="text-align:center;padding:32px;color:var(--muted);">Loading CRM data…</div>
   </div>
-  <input type="file" id="cl-import-file" accept=".csv" style="display:none" onchange="processClientImport(this)">
 
-  <!-- Client cards grid -->
-  <div id="cl-table"></div>
+  <input type="file" id="cl-import-file" accept=".csv" style="display:none" onchange="processClientImport(this)">
 </div>
 
 
@@ -1763,7 +1741,15 @@ tr:hover td { background:var(--light); }
     <!-- Time Heatmap -->
     <div class="card">
       <div class="ct">⏰ Session Time Heatmap (PHT)</div>
+      <div class="ct" style="font-size:11px;font-weight:400;margin-top:-6px;margin-bottom:10px;color:var(--muted);">Walk-in vs Booked arrival times — when clients actually come to the studio</div>
       <div id="cli-heatmap"></div>
+    </div>
+
+    <!-- Walk-in Arrival Time -->
+    <div class="card">
+      <div class="ct">🚶 Walk-in Arrival Times (PHT)</div>
+      <div class="ct" style="font-size:11px;font-weight:400;margin-top:-6px;margin-bottom:10px;color:var(--muted);">When unbooked clients show up — use this to plan staffing and ad timing</div>
+      <div id="cli-walkin-time"></div>
     </div>
 
     <!-- Full Registrations Table -->
@@ -2131,16 +2117,6 @@ tr:hover td { background:var(--light); }
     <div id="confirmed-list"><div style="text-align:center;color:var(--muted);padding:24px;font-size:13px;">No confirmed bookings this month.</div></div>
   </div>
 
-  <!-- ── TIME DISTRIBUTION ── -->
-  <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <div style="width:3px;height:20px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
-      <span style="font-size:14px;font-weight:700;color:var(--slate);">Booking Requests by Time Slot</span>
-      <span style="font-size:11px;color:var(--muted);">— most popular this month</span>
-    </div>
-    <div id="time-dist-chart"></div>
-  </div>
-
   <!-- ── BLOCKED ── -->
   <div style="background:var(--white);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:20px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -2434,7 +2410,8 @@ function loadLocal(){
     }
   }catch(e){}
 }
-function saveLocal(){ try{ localStorage.setItem('cl_db',JSON.stringify(DB)); }catch(e){} }
+function saveLocal(){
+  try{ localStorage.setItem('cl_db',JSON.stringify(DB)); }catch(e){} }
 
 // ================================================================
 //  UTILS
@@ -2716,7 +2693,7 @@ async function runDiagnostics(){
   const txDates = (DB.transactions||[]).map(function(t){return t.date||'';}).filter(Boolean);
   if(txDates.length) ok('Data: Transaction dates', 'Most recent: '+txDates.sort().slice(-1)[0]);
   const noEmailClients = (DB.clients||[]).filter(function(c){return !c.email;}).length;
-  if(noEmailClients>0) warn('Data: Client emails', noEmailClients+' clients have no email — CRM campaigns won\'t reach them');
+  if(noEmailClients>0) warn('Data: Client emails', noEmailClients+' clients have no email — CRM campaigns won&#39;t reach them');
   else if((DB.clients||[]).length) ok('Data: Client emails', 'All clients have email');
   const pendingAcks = (DB.acknowledgements||[]).filter(function(a){return !String(a.status||'').toLowerCase().includes('confirm')&&!String(a.status||'').toLowerCase().includes('cancel');}).length;
   if(pendingAcks>0) warn('Data: Pending ARs', pendingAcks+' acknowledgements still pending payment confirmation');
@@ -3473,7 +3450,7 @@ function renderCalendarLists(acks, yr, mo){
   }
 
   // ── TIME DISTRIBUTION CHART ──
-  renderTimeDistribution(monthAcks, calEvents.filter(function(ev){ return !ev.status || ev.status==='pending'||ev.status==='confirmed'; }));
+  // Time distribution moved to Monthly Reports → Bookings tab
 }
 
 function renderTimeDistribution(monthAcks, calEvs){
@@ -6961,137 +6938,257 @@ function getNextTier(pts){
   return null;
 }
 
+// ══════════════════════════════════════════════
+// CRM DASHBOARD (replaces old client card list)
+// ══════════════════════════════════════════════
 function renderClients(){
-  var searchEl = document.getElementById('cl-search');
-  var filterEl = document.getElementById('cl-filter');
-  var sortEl   = document.getElementById('cl-sort');
-  var q        = searchEl ? searchEl.value.toLowerCase().trim() : '';
-  var filter   = filterEl ? filterEl.value : 'all';
-  var sortBy   = sortEl   ? sortEl.value   : 'alpha';
-  var txns     = DB.transactions||[];
-  var regs     = DB.registrations||[];
-  var pa       = DB.pointsActivity||[];
-  var clients  = (DB.clients||[]).slice();
+  var el = document.getElementById('crm-dashboard');
+  if(!el) return;
+  var clients = (DB.clients||[]);
+  var txns    = (DB.transactions||[]).filter(function(t){ return !String(t.invoiceNum||'').startsWith('[VOID]'); });
+  var regs    = DB.registrations||[];
+  var pa      = DB.pointsActivity||[];
+  var total   = clients.length;
+  if(!total){ el.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);">No client data. Click 🔄 Sync Clients to load.</div>'; return; }
 
-  // Compute points + tier for each (use getClientTier for Bronze-on-booking logic)
-  clients = clients.map(function(c){
-    var pts  = getClientPoints(c, txns, pa);
-    var tier = getClientTier(c, txns, pa, regs);
-    return Object.assign({}, c, { _pts:pts, _tier:tier });
+  // ── Pre-compute lookup maps (O(n) single pass) ──
+  var regCount={}, lastVisit={}, txnSpent={}, hasSession={};
+  regs.forEach(function(r){
+    var n=(r.fbName||'').toLowerCase();
+    regCount[n]=(regCount[n]||0)+1;
+    if(!lastVisit[n]||r.date>lastVisit[n]) lastVisit[n]=r.date;
+    hasSession[n]=true;
+  });
+  txns.forEach(function(t){
+    var n=(t.clientName||'').toLowerCase();
+    txnSpent[n]=(txnSpent[n]||0)+(+t.total||0);
+    hasSession[n]=true;
   });
 
-  // Search
-  if(q) clients = clients.filter(function(c){
-    return (c.fbName||'').toLowerCase().includes(q)||
-           (c.email||'').toLowerCase().includes(q)||
-           (c.phone||'').toLowerCase().includes(q)||
-           (c.referredBy||'').toLowerCase().includes(q);
-  });
-
-  // Filters
+  // Tier assignment
+  var tierCounts = {'Gold VIP':0,'Silver':0,'Bronze':0,'New':0};
+  var allPts = [];
+  var totalSpent = 0, totalSessions = 0;
+  var withEmail=0, withPhone=0;
+  var thisMonth = String(new Date().getMonth()+1).padStart(2,'0');
+  var birthdayThisMonth = [];
   var cutoff60 = new Date(); cutoff60.setDate(cutoff60.getDate()-60);
   var cutoffStr = cutoff60.toISOString().slice(0,10);
-  var thisMonth = String(new Date().getMonth()+1).padStart(2,'0');
-  var tierFilters = { 'tier-gold':'Gold VIP', 'tier-silver':'Silver', 'tier-bronze':'Bronze', 'tier-new':'New' };
+  var atRisk = [];
+  var topBySpend = [];
+  var recentClients = [];
+  var newThisMonth = 0;
+  var nowMonth = new Date().toISOString().slice(0,7); // 2026-06
 
-  if(tierFilters[filter]) clients = clients.filter(function(c){ return c._tier.name===tierFilters[filter]; });
-  else if(filter==='walkin')  clients = clients.filter(function(c){ return c.type==='walkin'; });
-  else if(filter==='booked')  clients = clients.filter(function(c){ return c.type==='booked'; });
-  else if(filter==='smc-yes') clients = clients.filter(function(c){ return c.socialConsent==='yes'; });
-  else if(filter==='smc-no')  clients = clients.filter(function(c){ return c.socialConsent==='no'; });
-  else if(filter==='at-risk') clients = clients.filter(function(c){
-    var lv = regs.filter(function(r){ return r.fbName===c.fbName; }).map(function(r){ return r.date; }).sort().slice(-1)[0]||c.added||'';
-    return lv && lv < cutoffStr;
+  clients.forEach(function(c){
+    var nameL = (c.fbName||'').toLowerCase();
+    var spend = Math.floor((txnSpent[nameL]||0)/100);
+    var bonusPts = (pa||[]).filter(function(a){ return (a.fbName||'').toLowerCase()===nameL; }).reduce(function(s,a){ return s+(parseInt(a.points)||0); },0);
+    var pts = (parseInt(c.points)>0) ? parseInt(c.points) : spend+bonusPts;
+    var hasSess = hasSession[nameL]||c.type==='booked'||c.type==='walkin';
+    var tierName = 'New';
+    if(hasSess){ tierName='Bronze'; if(pts>=200) tierName='Silver'; if(pts>=500) tierName='Gold VIP'; }
+    tierCounts[tierName]++;
+    allPts.push(pts);
+    totalSpent += txnSpent[nameL]||0;
+    totalSessions += regCount[nameL]||0;
+    if(c.email) withEmail++;
+    if(c.phone) withPhone++;
+    if(c.birthday && String(c.birthday).slice(5,7)===thisMonth) birthdayThisMonth.push(c);
+    var lv = lastVisit[nameL]||c.added||'';
+    if(lv && lv < cutoffStr && hasSess) atRisk.push({name:c.fbName,lastVisit:lv,spent:txnSpent[nameL]||0});
+    topBySpend.push({name:c.fbName,spent:txnSpent[nameL]||0,sessions:regCount[nameL]||0,pts:pts,tier:tierName});
+    if(String(c.added||'').startsWith(nowMonth)) newThisMonth++;
   });
-  else if(filter==='birthday-month') clients = clients.filter(function(c){ return c.birthday && String(c.birthday).slice(5,7)===thisMonth; });
 
-  // Sort
-  if(sortBy==='alpha')    clients.sort(function(a,b){ return (a.fbName||'').localeCompare(b.fbName||''); });
-  if(sortBy==='points')   clients.sort(function(a,b){ return b._pts - a._pts; });
-  if(sortBy==='sessions') clients.sort(function(a,b){ return regs.filter(function(r){ return r.fbName===b.fbName;}).length - regs.filter(function(r){ return r.fbName===a.fbName;}).length; });
-  if(sortBy==='spent')    clients.sort(function(a,b){ return txns.filter(function(t){ return t.clientName===b.fbName;}).reduce(function(s,t){return s+(+t.total||0);},0) - txns.filter(function(t){ return t.clientName===a.fbName;}).reduce(function(s,t){return s+(+t.total||0);},0); });
-  if(sortBy==='recent')   clients.sort(function(a,b){ return (b.added||'').localeCompare(a.added||''); });
+  topBySpend.sort(function(a,b){ return b.spent-a.spent; });
+  atRisk.sort(function(a,b){ return (a.lastVisit||'').localeCompare(b.lastVisit||''); });
 
-  // Tier summary bar
-  var tierBar = document.getElementById('cl-tier-bar');
-  if(tierBar){
-    var allTiers = (DB.clients||[]).map(function(c){
-      return getClientTier(c, txns, pa, regs).name;
-    });
-    var displayTiers = TIERS.concat([{name:'New',emoji:'🆕',color:'var(--muted)',bg:'var(--light)',border:'var(--border)'}]);
-    tierBar.innerHTML = displayTiers.map(function(t){
-      var cnt = allTiers.filter(function(n){ return n===t.name; }).length;
-      var filterKey = 'tier-'+t.name.toLowerCase().replace(' vip','').replace(' ','');
-      return '<div style="background:var(--white);border:1.5px solid '+t.border+';border-radius:10px;padding:10px 12px;text-align:center;cursor:pointer;" onclick="(function(){var el=document.getElementById(\'cl-filter\');if(el)el.value=\''+filterKey+'\';renderClients();})()">'+
-        '<div style="font-size:18px;">'+t.emoji+'</div>'+
-        '<div style="font-size:18px;font-weight:800;color:'+t.color+';">'+cnt+'</div>'+
-        '<div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;">'+t.name+'</div>'+
-      '</div>';
-    }).join('');
-  }
+  var returning = Object.values(regCount).filter(function(v){return v>1;}).length;
+  var oneTime   = Object.keys(regCount).length - returning;
+  var retRate   = Object.keys(regCount).length ? Math.round(returning/Object.keys(regCount).length*100) : 0;
+  var avgSpend  = total ? Math.round(totalSpent/total) : 0;
+  var avgPts    = total ? Math.round(allPts.reduce(function(s,p){return s+p;},0)/total) : 0;
+  var emailPct  = total ? Math.round(withEmail/total*100) : 0;
+  var phonePct  = total ? Math.round(withPhone/total*100) : 0;
 
-  var el = document.getElementById('cl-table');
-  var cc = document.getElementById('cl-count');
-  if(cc) cc.textContent = clients.length+' client'+(clients.length!==1?'s':'');
-  if(!el) return;
-  if(!clients.length){ el.innerHTML='<div class="tm">No clients found.</div>'; return; }
+  var h = '';
 
-  el.innerHTML = '<div class="cl-grid">'+clients.map(function(c){
-    var name    = c.fbName||'';
-    var ini     = name.split(' ').map(function(w){ return w[0]||''; }).join('').slice(0,2).toUpperCase();
-    var tier    = c._tier;
-    var pts     = c._pts;
-    var nextT   = getNextTier(pts);
-    var sessions= regs.filter(function(r){ return r.fbName===name; }).length;
-    var cTxns   = txns.filter(function(t){ return t.clientName===name && !String(t.invoiceNum||'').startsWith('[VOID]'); });
-    var spent   = cTxns.reduce(function(s,t){ return s+(+t.total||0); }, 0);
-    var lastVisit=regs.filter(function(r){ return r.fbName===name; }).map(function(r){ return r.date; }).sort().slice(-1)[0]||c.added||'';
-    var smc     = c.socialConsent;
-    var isBday  = c.birthday && String(c.birthday).slice(5,7)===thisMonth;
-    var pctNext = nextT ? Math.min(100, Math.round(((pts-tier.min)/(nextT.min-tier.min))*100)) : 100;
+  // ── ROW 1: Key Metrics ──
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px;">';
+  var metrics = [
+    {label:'Total Clients',val:fmt(total),color:'var(--teal)',icon:'👥'},
+    {label:'New This Month',val:newThisMonth,color:'var(--success)',icon:'🆕'},
+    {label:'Retention Rate',val:retRate+'%',color:retRate>=50?'var(--success)':'var(--gold)',icon:'🔄'},
+    {label:'Avg Spend / Client',val:'₱'+fmt(avgSpend),color:'var(--teal)',icon:'💰'},
+    {label:'Total Revenue',val:'₱'+fmt(totalSpent),color:'var(--teal)',icon:'📊'},
+    {label:'Total Sessions',val:fmt(totalSessions),color:'var(--slate)',icon:'📸'},
+  ];
+  metrics.forEach(function(m){
+    h += '<div style="background:var(--white);border-radius:12px;padding:14px 16px;border:1px solid var(--border);">'+
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:6px;">'+m.icon+' '+m.label+'</div>'+
+      '<div style="font-size:22px;font-weight:800;color:'+m.color+';">'+m.val+'</div>'+
+    '</div>';
+  });
+  h += '</div>';
 
-    return '<div class="cl-card" onclick="openClientProfile(\''+encodeURIComponent(name)+'\')">'+
-      '<div class="cl-card-header">'+
-        '<div class="cl-avatar" style="background:'+tier.color+';color:#fff;">'+ini+'</div>'+
-        '<div style="flex:1;min-width:0;">'+
-          '<div class="cl-name">'+escHtml(name)+(isBday?' 🎂':'')+
-            '<span style="margin-left:6px;font-size:11px;background:'+tier.bg+';color:'+tier.color+';border:1px solid '+tier.border+';padding:2px 8px;border-radius:10px;font-weight:600;vertical-align:middle;">'+tier.emoji+' '+tier.name+'</span>'+
-          '</div>'+
-          '<div class="cl-email">'+(c.email||'No email on file')+'</div>'+
+  // ── ROW 2: Tier Distribution + Contact Coverage ──
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+
+  // Tier distribution card
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;">⭐ Tier Distribution</div>';
+  var tierAll = [
+    {name:'Gold VIP',emoji:'👑',color:'#b8860b',cnt:tierCounts['Gold VIP']},
+    {name:'Silver',emoji:'💎',color:'#5b63d9',cnt:tierCounts['Silver']},
+    {name:'Bronze',emoji:'⭐',color:'#d79068',cnt:tierCounts['Bronze']},
+    {name:'New',emoji:'🆕',color:'var(--muted)',cnt:tierCounts['New']},
+  ];
+  tierAll.forEach(function(t){
+    var pct = total ? Math.round(t.cnt/total*100) : 0;
+    h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'+
+      '<div style="font-size:14px;min-width:20px;">'+t.emoji+'</div>'+
+      '<div style="flex:1;">'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">'+
+          '<span style="font-weight:600;color:'+t.color+';">'+t.name+'</span>'+
+          '<span style="color:var(--muted);">'+t.cnt+' ('+pct+'%)</span>'+
         '</div>'+
-        '<button class="btn btn-sm btn-outline" style="flex-shrink:0;padding:4px 10px;font-size:11px;" '+
-          'data-cname="'+encodeURIComponent(name)+'" '+
-          'onclick="event.stopPropagation();openEditClient(this.dataset.cname)">✏</button>'+
-      '</div>'+
-      // Points bar
-      '<div style="margin:8px 0;">'+
-        '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">'+
-          '<span style="font-weight:700;color:'+tier.color+';">🏅 '+pts+' pts</span>'+
-          (nextT?'<span style="color:var(--muted);">'+nextT.emoji+' '+nextT.name+' at '+nextT.min+'</span>':'<span style="color:'+tier.color+';">Max tier reached!</span>')+
+        '<div style="height:6px;background:var(--light2);border-radius:3px;overflow:hidden;">'+
+          '<div style="height:100%;width:'+pct+'%;background:'+t.color+';border-radius:3px;"></div>'+
         '</div>'+
-        '<div style="height:4px;background:var(--light2);border-radius:2px;overflow:hidden;">'+
-          '<div style="height:100%;width:'+pctNext+'%;background:'+tier.color+';border-radius:2px;transition:width .4s;"></div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="cl-stats">'+
-        '<div class="cl-stat"><div class="cl-stat-val">'+sessions+'</div><div class="cl-stat-lbl">Visits</div></div>'+
-        '<div class="cl-stat"><div class="cl-stat-val">'+cTxns.length+'</div><div class="cl-stat-lbl">Invoices</div></div>'+
-        '<div class="cl-stat"><div class="cl-stat-val" style="font-size:12px;">'+(spent>0?'&#8369;'+fmt(spent):'&#8369;0')+'</div><div class="cl-stat-lbl">Spent</div></div>'+
-      '</div>'+
-      (c.phone||c.birthday?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">'+
-        (c.phone?'📱 '+escHtml(c.phone)+' ':'')+
-        (c.birthday?'🎂 '+fmtBirthday(c.birthday):'')+
-      '</div>':'')+
-      '<div style="display:flex;gap:6px;margin-top:8px;">'+
-        '<button class="btn btn-sm btn-teal" style="flex:1;font-size:11px;" '+
-          'data-cname="'+encodeURIComponent(name)+'" '+
-          'onclick="event.stopPropagation();openLogPoints(this.dataset.cname)">🏅 Log Points</button>'+
-        '<button class="btn btn-sm btn-outline" style="flex:1;font-size:11px;" '+
-          'data-cname="'+encodeURIComponent(name)+'" '+
-          'onclick="event.stopPropagation();openRedeemPoints(this.dataset.cname)">🎁 Redeem</button>'+
       '</div>'+
     '</div>';
-  }).join('')+'</div>';
+  });
+  h += '</div>';
+
+  // Contact coverage card
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;">📇 Contact Coverage</div>';
+  var coverageItems = [
+    {label:'Has Email',pct:emailPct,count:withEmail,color:'var(--teal)'},
+    {label:'Has Phone',pct:phonePct,count:withPhone,color:'var(--gold)'},
+    {label:'SM Consent',pct:total?Math.round(clients.filter(function(c){return c.socialConsent==='yes';}).length/total*100):0,count:clients.filter(function(c){return c.socialConsent==='yes';}).length,color:'var(--success)'},
+  ];
+  coverageItems.forEach(function(item){
+    h += '<div style="margin-bottom:12px;">'+
+      '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">'+
+        '<span style="font-weight:600;">'+item.label+'</span>'+
+        '<span style="color:'+item.color+';font-weight:700;">'+item.count+' / '+total+' ('+item.pct+'%)</span>'+
+      '</div>'+
+      '<div style="height:8px;background:var(--light2);border-radius:4px;overflow:hidden;">'+
+        '<div style="height:100%;width:'+item.pct+'%;background:'+item.color+';border-radius:4px;"></div>'+
+      '</div>'+
+    '</div>';
+  });
+  var emailGap = total - withEmail;
+  if(emailGap > 0) h += '<div style="font-size:11px;color:var(--gold);margin-top:8px;">⚠ '+emailGap+' clients have no email — campaigns won&#39;t reach them</div>';
+  h += '</div></div>';
+
+  // ── ROW 3: Retention + Client Value ──
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">';
+
+  // Retention
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;">🔄 Retention</div>'+
+    '<div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;">'+
+      '<div style="width:80px;height:80px;border-radius:50%;border:6px solid var(--light2);position:relative;display:flex;align-items:center;justify-content:center;">'+
+        '<div style="position:absolute;inset:0;border-radius:50%;border:6px solid var(--teal);border-color:var(--teal) transparent transparent transparent;transform:rotate('+(retRate*3.6)+'deg);"></div>'+
+        '<span style="font-size:18px;font-weight:800;color:var(--teal);">'+retRate+'%</span>'+
+      '</div>'+
+      '<div style="font-size:13px;line-height:1.8;">'+
+        '<div><strong style="color:var(--teal);">'+returning+'</strong> returning clients</div>'+
+        '<div><strong>'+oneTime+'</strong> one-time visitors</div>'+
+        '<div style="font-size:11px;color:var(--muted);">Avg '+avgPts+' pts / client</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+
+  // At-risk
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--danger);margin-bottom:10px;">⚠ At-Risk Clients <span style="font-weight:400;color:var(--muted);">(60+ days since last visit)</span></div>';
+  if(atRisk.length===0) h += '<div style="font-size:12px;color:var(--muted);">No at-risk clients — great retention!</div>';
+  else {
+    h += '<div style="max-height:160px;overflow-y:auto;">';
+    atRisk.slice(0,10).forEach(function(c){
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:1px solid var(--light2);">'+
+        '<span style="font-weight:600;">'+escHtml(c.name)+'</span>'+
+        '<span style="color:var(--danger);font-size:11px;">Last: '+c.lastVisit.slice(0,10)+'</span>'+
+      '</div>';
+    });
+    h += '</div>';
+    if(atRisk.length>10) h += '<div style="font-size:11px;color:var(--muted);margin-top:6px;">+ '+(atRisk.length-10)+' more — open CRM for full list</div>';
+  }
+  h += '</div></div>';
+
+  // ── ROW 4: Top Clients + Birthdays ──
+  h += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:16px;">';
+
+  // Top 10 clients by spend
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;">🏆 Top Clients by Revenue</div>';
+  var top10 = topBySpend.filter(function(c){return c.spent>0;}).slice(0,10);
+  if(!top10.length) h += '<div style="font-size:12px;color:var(--muted);">No transaction data yet.</div>';
+  else {
+    var topMax = top10[0].spent||1;
+    top10.forEach(function(c,i){
+      var pct = Math.round(c.spent/topMax*100);
+      var tierEmoji = c.tier==='Gold VIP'?'👑':c.tier==='Silver'?'💎':c.tier==='Bronze'?'⭐':'🆕';
+      h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'+
+        '<div style="font-size:11px;font-weight:700;color:var(--muted);width:18px;text-align:right;">'+(i+1)+'</div>'+
+        '<div style="flex:1;min-width:0;">'+
+          '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">'+
+            '<span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+tierEmoji+' '+escHtml(c.name)+'</span>'+
+            '<span style="font-weight:700;color:var(--teal);white-space:nowrap;">₱'+fmt(c.spent)+'</span>'+
+          '</div>'+
+          '<div style="height:4px;background:var(--light2);border-radius:2px;overflow:hidden;">'+
+            '<div style="height:100%;width:'+pct+'%;background:var(--teal);border-radius:2px;"></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    });
+  }
+  h += '</div>';
+
+  // Birthdays this month
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:10px;">🎂 Birthdays This Month</div>';
+  if(!birthdayThisMonth.length) h += '<div style="font-size:12px;color:var(--muted);">No birthdays this month</div>';
+  else {
+    birthdayThisMonth.slice(0,8).forEach(function(c){
+      h += '<div style="padding:5px 0;font-size:12px;border-bottom:1px solid var(--light2);display:flex;justify-content:space-between;">'+
+        '<span style="font-weight:600;">🎂 '+escHtml(c.fbName)+'</span>'+
+        '<span style="color:var(--muted);font-size:11px;">'+String(c.birthday).slice(5)+'</span>'+
+      '</div>';
+    });
+    if(birthdayThisMonth.length>8) h += '<div style="font-size:11px;color:var(--muted);margin-top:6px;">+ '+(birthdayThisMonth.length-8)+' more</div>';
+  }
+  h += '</div></div>';
+
+  // ── ROW 5: Acquisition trend (last 6 months) ──
+  h += '<div style="background:var(--white);border-radius:14px;padding:18px 20px;border:1px solid var(--border);margin-bottom:16px;">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px;">📈 Client Acquisition — Last 6 Months</div>';
+  var months = [];
+  for(var mi=5;mi>=0;mi--){
+    var d = new Date(); d.setMonth(d.getMonth()-mi);
+    var key = d.toISOString().slice(0,7);
+    var label = d.toLocaleDateString('en-PH',{month:'short',timeZone:'Asia/Manila'});
+    var count = clients.filter(function(c){ return String(c.added||'').startsWith(key); }).length;
+    months.push({key:key,label:label,count:count});
+  }
+  var monthMax = Math.max.apply(null,months.map(function(m){return m.count;}))||1;
+  h += '<div style="display:flex;align-items:flex-end;gap:8px;height:100px;padding:0 4px;">';
+  months.forEach(function(m){
+    var pct = Math.round(m.count/monthMax*100);
+    var isPeak = m.count===monthMax&&m.count>0;
+    h += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'+
+      '<div style="font-size:10px;font-weight:700;color:'+(isPeak?'var(--teal)':'var(--muted)')+';">'+m.count+'</div>'+
+      '<div style="width:100%;border-radius:4px 4px 0 0;background:'+(isPeak?'var(--teal)':'rgba(81,137,125,.25)')+';height:'+Math.max(pct,4)+'%;min-height:4px;"></div>'+
+      '<div style="font-size:11px;font-weight:600;color:var(--muted);">'+m.label+'</div>'+
+    '</div>';
+  });
+  h += '</div></div>';
+
+  el.innerHTML = h;
 }
 
 
@@ -8427,7 +8524,38 @@ function renderBookingsReport(acks, bookings, prefixes, label){
     slotCounts[slot].total++;
   });
 
+  // Also count from calendar events (Google Calendar data)
+  (DB._calEvents||[]).forEach(function(ev){
+    var evDate = String(ev.start||'').slice(0,10);
+    if(!evDate || !prefixes.some(function(p){ return evDate.startsWith(p); })) return;
+    if(String(ev.status||'')==='cancelled') return;
+    var evTime = '';
+    var tmMatch = (ev.description||'').match(/Time:\s*(.+)/i);
+    if(tmMatch) evTime = tmMatch[1].trim();
+    if(!evTime && ev.start){
+      try{
+        var dd = new Date(ev.start);
+        evTime = dd.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'Asia/Manila'});
+      }catch(e2){}
+    }
+    if(!evTime) return;
+    if(!slotCounts[evTime]) slotCounts[evTime]={confirmed:0,pending:0,total:0};
+    var evSt = String(ev.status||'').toLowerCase();
+    if(evSt.includes('confirm')) slotCounts[evTime].confirmed++;
+    else slotCounts[evTime].pending++;
+    slotCounts[evTime].total++;
+  });
 
+  // Also count from Bookings sheet directly
+  (bookings||[]).forEach(function(b){
+    var d = toDateStr(b.date||'');
+    if(!d || !prefixes.some(function(p){ return d.startsWith(p); })) return;
+    var slot = String(b.timeSlot||b.time_slot||'').trim();
+    if(!slot) return;
+    if(!slotCounts[slot]) slotCounts[slot]={confirmed:0,pending:0,total:0};
+    slotCounts[slot].pending++;
+    slotCounts[slot].total++;
+  });
 
   var maxSlot = Math.max.apply(null, ALL_SLOTS_REP.map(function(s){ return slotCounts[s]?slotCounts[s].total:0; }));
   var slotEl = document.getElementById('rep-slot-chart');
@@ -8464,30 +8592,21 @@ function renderBookingsReport(acks, bookings, prefixes, label){
   }
 
   // ── CHART 2: Submission hour distribution (from Bookings sheet `submitted` column) ──
+  // NOTE: b.submitted is already a PHT string like "2026-06-10 14:30:00" from Code.gs
+  // Extract the hour directly from the string — do NOT parse with new Date() (browser timezone issue)
   var hourCounts = new Array(24).fill(0);
-  // Use submitted timestamp from Bookings sheet
   var submittedData = periodBk.filter(function(b){ return b.submitted; });
-  // Fallback: use ACK 'date' (booking confirmation date) for submission timing
   if(submittedData.length===0){
-    periodAcks.forEach(function(a){
-      var ts = a.submittedAt||a.submitted_at||a.date||'';
-      if(!ts) return;
-      try{
-        var d2 = new Date(String(ts)+'T12:00:00');
-        if(!isNaN(d2.getTime())){
-          // Use PHT hours (rough estimate — most bookings happen 9AM-9PM)
-          var phtH = (d2.getUTCHours() + 8) % 24;
-          hourCounts[phtH]++;
-        }
-      }catch(e){}
-    });
+    // Fallback: no booking sheet data — skip (ACK dates have no time component)
   } else {
     submittedData.forEach(function(b){
-      try{
-        var sub = b.submitted;
-        var d   = sub instanceof Date ? sub : new Date(String(sub));
-        if(!isNaN(d.getTime())){ hourCounts[d.getUTCHours()]++; } // Sheets stores in UTC
-      }catch(e){}
+      var sub = String(b.submitted||'');
+      // Extract hour from "2026-06-10 14:30:00" → position 11-12
+      var match = sub.match(/\d{4}-\d{2}-\d{2}\s+(\d{1,2}):/);
+      if(match){
+        var phtHour = parseInt(match[1], 10);
+        if(phtHour >= 0 && phtHour < 24) hourCounts[phtHour]++;
+      }
     });
   }
   var maxHour = Math.max.apply(null, hourCounts);
@@ -8554,165 +8673,8 @@ function renderBookingsReport(acks, bookings, prefixes, label){
     }
   }
 
-  // Stats
-  var total     = periodAcks.length;
-  var confirmed = periodAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('confirm'); }).length;
-  var cancelled = periodAcks.filter(function(a){ return String(a.status||'').toLowerCase().includes('cancel'); }).length;
-  var pending   = total - confirmed - cancelled;
-
-  var bkTotal = document.getElementById('bk-total');
-  var bkConf  = document.getElementById('bk-confirmed');
-  var bkPend  = document.getElementById('bk-pending');
-  var bkCanc  = document.getElementById('bk-cancelled');
-  if(bkTotal) bkTotal.innerHTML = '<div class="rs-label">Total Bookings</div><div class="rs-val">'+total+'</div>';
-  if(bkConf)  bkConf.innerHTML  = '<div class="rs-label">Confirmed</div><div class="rs-val rs-teal">'+confirmed+'</div>';
-  if(bkPend)  bkPend.innerHTML  = '<div class="rs-label">Pending Payment</div><div class="rs-val rs-gold">'+pending+'</div>';
-  if(bkCanc)  bkCanc.innerHTML  = '<div class="rs-label">Cancelled</div><div class="rs-val rs-danger">'+cancelled+'</div>';
-
-  // ── CHART 1: Time slot distribution ──
-  var slotCounts = {};
-  ALL_SLOTS_REP.forEach(function(s){ slotCounts[s]={confirmed:0,pending:0,total:0}; });
-  periodAcks.forEach(function(a){
-    var slot = String(a.timeSlot||'').trim();
-    if(!slot) return;
-    if(!slotCounts[slot]) slotCounts[slot]={confirmed:0,pending:0,total:0};
-    var st = String(a.status||'').toLowerCase();
-    if(st.includes('cancel')) return;
-    if(st.includes('confirm')) slotCounts[slot].confirmed++;
-    else slotCounts[slot].pending++;
-    slotCounts[slot].total++;
-  });
-  var maxSlot = Math.max.apply(null, ALL_SLOTS_REP.map(function(s){ return slotCounts[s]?slotCounts[s].total:0; }));
-  var slotEl = document.getElementById('rep-slot-chart');
-  if(slotEl){
-    if(maxSlot===0){ slotEl.innerHTML='<div class="tm">No booking slot data for this period.</div>'; }
-    else {
-      var sh = '<div style="display:grid;gap:6px;">';
-      ALL_SLOTS_REP.forEach(function(slot){
-        var c = slotCounts[slot]||{confirmed:0,pending:0,total:0};
-        var pct = Math.round((c.total/maxSlot)*100);
-        var isTop = c.total===maxSlot&&c.total>0;
-        sh += '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<div style="font-size:11px;font-weight:600;color:var(--muted);min-width:72px;text-align:right;flex-shrink:0;">'+slot+'</div>'+
-          '<div style="flex:1;height:22px;border-radius:4px;background:var(--light);overflow:hidden;position:relative;">'+
-            (pct>0?'<div style="position:absolute;left:0;top:0;height:100%;width:'+pct+'%;display:flex;overflow:hidden;border-radius:4px;">'+
-              (c.confirmed>0?'<div style="height:100%;flex:'+c.confirmed+';background:var(--teal);"></div>':'')+
-              (c.pending>0?'<div style="height:100%;flex:'+c.pending+';background:#ffc107;"></div>':'')+
-            '</div>':'')+
-          '</div>'+
-          '<div style="min-width:90px;display:flex;align-items:center;gap:5px;flex-shrink:0;">'+
-            '<span style="font-size:13px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+c.total+'</span>'+
-            '<span style="font-size:10px;color:var(--muted);">booking'+(c.total!==1?'s':'')+'</span>'+
-            (isTop&&c.total>0?'<span style="font-size:9px;background:rgba(215,144,104,0.12);color:var(--gold);padding:1px 5px;border-radius:6px;font-weight:700;">★</span>':'')+
-          '</div>'+
-        '</div>';
-      });
-      sh += '</div>';
-      sh += '<div style="display:flex;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--light2);">'+
-        '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Confirmed</span>'+
-        '<span style="font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#ffc107;display:inline-block;"></span>Pending payment</span>'+
-      '</div>';
-      slotEl.innerHTML = sh;
-    }
-  }
-
-  // ── CHART 2: Submission hour distribution (from Bookings sheet) ──
-  var hourCounts = new Array(24).fill(0);
-  var hasSubmitData = false;
-  periodBk.forEach(function(b){
-    var sub = b.submitted;
-    if(!sub) return;
-    var dt = sub instanceof Date ? sub : new Date(String(sub));
-    if(isNaN(dt.getTime())) return;
-    // Convert to Manila time
-    var manilaHour = (dt.getUTCHours() + 8) % 24;
-    hourCounts[manilaHour]++;
-    hasSubmitData = true;
-  });
-
-  var subEl = document.getElementById('rep-submit-chart');
-  if(subEl){
-    if(!hasSubmitData){ subEl.innerHTML='<div class="tm">No submission time data. Make sure Code.gs is updated and redeployed.</div>'; }
-    else {
-      var maxHour = Math.max.apply(null, hourCounts);
-      // Group into 4-hour blocks for cleaner display
-      var blocks = [];
-      for(var h=0; h<24; h+=2){
-        blocks.push({
-          label: HOUR_LABELS[h]+' – '+HOUR_LABELS[(h+2)%24],
-          count: hourCounts[h]+(hourCounts[h+1]||0),
-          hours: [h, h+1]
-        });
-      }
-      var maxBlock = Math.max.apply(null, blocks.map(function(b){ return b.count; }));
-      var topIdx = blocks.reduce(function(best,b,i){ return b.count>blocks[best].count?i:best; }, 0);
-
-      var subH = '<div style="display:grid;gap:6px;">';
-      blocks.forEach(function(blk, i){
-        var pct = maxBlock>0 ? Math.round((blk.count/maxBlock)*100) : 0;
-        var isTop = i===topIdx && blk.count>0;
-        var isPeak = (blk.hours[0]>=18&&blk.hours[0]<=23)||(blk.hours[0]>=6&&blk.hours[0]<=9);
-        subH += '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<div style="font-size:10px;font-weight:600;color:var(--muted);min-width:90px;text-align:right;flex-shrink:0;white-space:nowrap;">'+blk.label+'</div>'+
-          '<div style="flex:1;height:20px;border-radius:4px;background:var(--light);overflow:hidden;">'+
-            (pct>0?'<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(isTop?'var(--gold)':isPeak?'var(--teal)':'var(--slate)')+'25;"></div>':'')+
-            (pct>0?'<div style="height:100%;width:'+pct+'%;border-radius:4px;background:'+(isTop?'var(--gold)':isPeak?'var(--teal)':'rgba(47,79,79,.25)')+';margin-top:-20px;"></div>':'')+
-          '</div>'+
-          '<div style="min-width:60px;display:flex;align-items:center;gap:5px;flex-shrink:0;">'+
-            '<span style="font-size:12px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+blk.count+'</span>'+
-            (isTop?'<span style="font-size:9px;background:rgba(215,144,104,0.12);color:var(--gold);padding:1px 5px;border-radius:6px;font-weight:700;">Peak</span>':'')+
-          '</div>'+
-        '</div>';
-      });
-      subH += '</div>';
-
-      // Insight
-      var peakBlock = blocks[topIdx];
-      subH += '<div style="margin-top:12px;padding:10px 14px;background:rgba(81,137,125,0.06);border-radius:8px;font-size:12px;color:var(--teal);">'+
-        '💡 Most bookings are submitted between <strong>'+peakBlock.label+'</strong> ('+peakBlock.count+' submission'+(peakBlock.count!==1?'s':'')+'). Consider running promos during this window.'+
-      '</div>';
-
-      subEl.innerHTML = subH;
-    }
-  }
-
-  // ── CHART 3: Day of week ──
-  var dowCounts = [0,0,0,0,0,0,0]; // Mon=0 … Sun=6
-  periodBk.forEach(function(b){
-    var sub = b.submitted;
-    if(!sub) return;
-    var dt = sub instanceof Date ? sub : new Date(String(sub));
-    if(isNaN(dt.getTime())) return;
-    var dow = (dt.getDay()+6)%7; // JS Sun=0 → Mon=0
-    dowCounts[dow]++;
-  });
-  var dowEl = document.getElementById('rep-dow-chart');
-  if(dowEl){
-    var maxDow = Math.max.apply(null, dowCounts);
-    if(maxDow===0){ dowEl.innerHTML='<div class="tm">No submission data for this period.</div>'; }
-    else {
-      var dowH = '<div style="display:flex;gap:8px;align-items:flex-end;justify-content:center;height:100px;margin-bottom:8px;">';
-      DOW_LABELS.forEach(function(lbl,i){
-        var pct  = Math.round((dowCounts[i]/maxDow)*100);
-        var isTop = dowCounts[i]===maxDow&&dowCounts[i]>0;
-        var isSun = i===6;
-        dowH += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">'+
-          '<div style="font-size:10px;font-weight:700;color:'+(isTop?'var(--gold)':'var(--slate)')+';">'+dowCounts[i]+'</div>'+
-          '<div style="width:100%;border-radius:4px 4px 0 0;background:'+(isSun?'rgba(192,84,74,0.2)':isTop?'var(--gold)':'var(--teal)')+';height:'+Math.max(pct,4)+'px;transition:height .3s;"></div>'+
-          '<div style="font-size:10px;color:'+(isSun?'var(--danger)':'var(--muted)')+';font-weight:600;">'+lbl+'</div>'+
-        '</div>';
-      });
-      dowH += '</div>';
-
-      // Insight
-      var topDowIdx = dowCounts.reduce(function(best,c,i){ return c>dowCounts[best]?i:best; }, 0);
-      dowH += '<div style="font-size:12px;padding:10px 14px;background:rgba(81,137,125,0.06);border-radius:8px;color:var(--teal);">'+
-        '💡 Clients most often book on <strong>'+DOW_LABELS[topDowIdx]+'</strong>. Schedule promos or reminders the night before.'+
-      '</div>';
-      dowEl.innerHTML = dowH;
-    }
-  }
 }
+
 function renderFinancialReport(txns, allExp, allFT, eods, acks, label){
   const totalRev  = txns.reduce((s,t)=>s+(+t.total||0),0);
   const totalExp  = allExp.reduce((s,e)=>s+(+e.amt||0),0);
@@ -8948,9 +8910,9 @@ function renderClientsReport(regs, txnMap, ackMap, label, prefixes){
   } else { arrHtml = '<div class="tm">No registrations this period.</div>'; }
   document.getElementById('cli-arrival-chart').innerHTML = arrHtml;
 
-  // Heatmap
-  const hourCount={};
-  for(let h=10;h<=18;h++) hourCount[h]=0;
+  // Heatmap — split walk-in vs booked
+  const wiHourCount={}, bkHourCount={}, allHourCount={};
+  for(let h=10;h<=18;h++){ wiHourCount[h]=0; bkHourCount[h]=0; allHourCount[h]=0; }
   regs.forEach(r=>{
     if(!r.time) return;
     const t=String(r.time).trim();
@@ -8959,26 +8921,100 @@ function renderClientsReport(regs, txnMap, ackMap, label, prefixes){
     let h=-1;
     if(p12){ h=parseInt(p12[1]); if(p12[3].toUpperCase()==='PM'&&h!==12) h+=12; if(p12[3].toUpperCase()==='AM'&&h===12) h=0; }
     else if(p24){ h=parseInt(p24[1]); }
-    if(h>=10&&h<=18&&hourCount.hasOwnProperty(h)) hourCount[h]++;
+    if(h>=10&&h<=18){
+      allHourCount[h]++;
+      if(r.arrType==='walkin') wiHourCount[h]++;
+      else bkHourCount[h]++;
+    }
   });
-  const maxH=Math.max(...Object.values(hourCount),1);
+  const maxH=Math.max(...Object.values(allHourCount),1);
   const timeLabels={10:'10AM',11:'11AM',12:'12PM',13:'1PM',14:'2PM',15:'3PM',16:'4PM',17:'5PM',18:'6PM'};
+
+  // Stacked bar heatmap
   let hmHtml='<div style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:12px;">';
-  Object.entries(hourCount).forEach(([h,cnt])=>{
-    const intensity=cnt===0?0.06:0.15+(cnt/maxH)*0.75;
+  Object.keys(allHourCount).forEach(function(h){
+    const wi=wiHourCount[h], bk=bkHourCount[h], tot=allHourCount[h];
+    const barH = tot===0 ? 4 : Math.round((tot/maxH)*60);
+    const wiH  = tot>0 ? Math.round((wi/tot)*barH) : 0;
+    const bkH  = barH - wiH;
     hmHtml+='<div style="text-align:center;">'+
-      '<div style="height:60px;background:rgba(81,137,125,'+intensity.toFixed(2)+');border-radius:6px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;">'+
-        (cnt>0?'<span style="font-size:12px;font-weight:700;color:var(--teal-dk);">'+cnt+'</span>':'<span style="font-size:10px;color:var(--light2);">0</span>')+
+      '<div style="font-size:10px;font-weight:700;color:var(--slate);margin-bottom:3px;">'+(tot||'')+'</div>'+
+      '<div style="height:60px;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;">'+
+        (bkH>0?'<div style="height:'+bkH+'px;background:var(--gold);border-radius:4px 4px 0 0;"></div>':'')+
+        (wiH>0?'<div style="height:'+wiH+'px;background:var(--teal);border-radius:'+(bkH>0?'0':'4px 4px')+' 0 0;"></div>':'')+
       '</div>'+
       '<div style="font-size:10px;color:var(--muted);margin-top:4px;">'+timeLabels[h]+'</div>'+
     '</div>';
   });
   hmHtml+='</div>';
-  if(maxH>0){
-    const peakH=Object.entries(hourCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // Legend + insights
+  hmHtml+='<div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--muted);">'+
+    '<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--teal);display:inline-block;"></span>Walk-in</span>'+
+    '<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--gold);display:inline-block;"></span>Booked</span>'+
+  '</div>';
+  if(maxH>1){
+    const peakH=Object.entries(allHourCount).sort((a,b)=>b[1]-a[1])[0];
     hmHtml+='<span class="insight-pill">📈 Peak: '+(timeLabels[peakH[0]]||peakH[0])+' — '+peakH[1]+' session'+(peakH[1]!==1?'s':'')+'</span>';
   }
   document.getElementById('cli-heatmap').innerHTML=hmHtml;
+
+  // ── Walk-in Arrival Time Chart ──
+  var wiEl = document.getElementById('cli-walkin-time');
+  if(wiEl){
+    const wiTotal = Object.values(wiHourCount).reduce((s,v)=>s+v,0);
+    if(wiTotal===0){
+      wiEl.innerHTML='<div class="tm">No walk-in time data for this period.</div>';
+    } else {
+      const wiMax = Math.max(...Object.values(wiHourCount),1);
+      const wiPeakEntry = Object.entries(wiHourCount).sort((a,b)=>b[1]-a[1])[0];
+      const wiPeakH = wiPeakEntry[0];
+      const wiPeakCnt = wiPeakEntry[1];
+
+      // Horizontal bar chart
+      let wiHtml = '<div style="display:grid;gap:5px;">';
+      Object.entries(wiHourCount).forEach(function(entry){
+        const h=entry[0], cnt=entry[1];
+        const pct = Math.round((cnt/wiMax)*100);
+        const isPeak = cnt===wiPeakCnt && cnt>0;
+        wiHtml += '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<div style="font-size:11px;font-weight:600;color:var(--muted);min-width:48px;text-align:right;">'+timeLabels[h]+'</div>'+
+          '<div style="flex:1;height:24px;border-radius:4px;background:var(--light);overflow:hidden;position:relative;">'+
+            (pct>0?'<div style="position:absolute;left:0;top:0;height:100%;width:'+pct+'%;background:'+(isPeak?'var(--teal)':'rgba(81,137,125,0.4)')+';border-radius:4px;transition:width .3s;"></div>':'')+
+          '</div>'+
+          '<div style="min-width:50px;font-size:13px;font-weight:'+(isPeak?'800':'600')+';color:'+(isPeak?'var(--teal)':'var(--slate)')+';">'+cnt+
+            (isPeak&&cnt>0?' <span style="font-size:9px;background:rgba(81,137,125,0.1);color:var(--teal);padding:1px 5px;border-radius:6px;">Peak</span>':'')+
+          '</div>'+
+        '</div>';
+      });
+      wiHtml += '</div>';
+
+      // Insights
+      wiHtml += '<div style="margin-top:14px;padding:12px 14px;background:rgba(81,137,125,0.04);border:1px solid rgba(81,137,125,0.1);border-radius:10px;">';
+      wiHtml += '<div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:6px;">💡 Walk-in Insights</div>';
+      wiHtml += '<div style="font-size:12px;color:var(--muted);line-height:1.8;">';
+      wiHtml += '🚶 <strong>'+wiTotal+'</strong> walk-in client'+(wiTotal!==1?'s':'')+' this period<br>';
+      wiHtml += '⏰ Most walk-ins arrive at <strong>'+(timeLabels[wiPeakH]||wiPeakH)+'</strong> ('+wiPeakCnt+' visit'+(wiPeakCnt!==1?'s':'')+')<br>';
+
+      // Find quiet hours (0 walk-ins)
+      var quietHours = Object.entries(wiHourCount).filter(function(e){ return e[1]===0; }).map(function(e){ return timeLabels[e[0]]; });
+      if(quietHours.length>0 && quietHours.length<9){
+        wiHtml += '😴 No walk-ins at: <strong>'+quietHours.join(', ')+'</strong> — consider reduced staffing<br>';
+      }
+
+      // Morning vs afternoon split
+      var morning = [10,11,12].reduce(function(s,h){ return s+(wiHourCount[h]||0); },0);
+      var afternoon = [13,14,15,16,17,18].reduce(function(s,h){ return s+(wiHourCount[h]||0); },0);
+      if(wiTotal>2){
+        wiHtml += '🌅 Morning (10AM–12PM): <strong>'+morning+'</strong> · Afternoon (1PM–6PM): <strong>'+afternoon+'</strong>';
+        if(afternoon>morning*2) wiHtml += ' — <em style="color:var(--gold);">afternoon-heavy, schedule promos for morning to balance</em>';
+        else if(morning>afternoon*2) wiHtml += ' — <em style="color:var(--gold);">morning-heavy, great for early bird deals</em>';
+      }
+
+      wiHtml += '</div></div>';
+      wiEl.innerHTML = wiHtml;
+    }
+  }
 
   // Full table
   function getPkg(r){
