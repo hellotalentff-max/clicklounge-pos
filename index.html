@@ -830,6 +830,15 @@ tr:hover td { background:var(--light); }
   #print-area { display:block!important; }
 }
 #print-area { display:none; }
+
+/* ── Modal CSS (used by Tasks, etc) ── */
+.pm-bg{display:none;position:fixed;inset:0;background:rgba(15,30,30,.55);z-index:500;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto;}
+.pm-bg.open{display:flex;}
+.pm{background:var(--white,#fff);border-radius:16px;width:100%;max-width:480px;box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:hidden;}
+.pm-h{background:var(--dark,#2f4f4f);color:var(--cream,#f5f0e8);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;}
+.pm-b{padding:18px;}
+.pm .fg{display:flex;flex-direction:column;}
+.pm .fl{font-size:11px;font-weight:600;color:var(--slate,#1e3333);margin-bottom:6px;}
 </style>
 </head>
 <body>
@@ -1207,23 +1216,170 @@ tr:hover td { background:var(--light); }
 <!-- TASKS -->
 <div id="page-tasks" class="page">
   <div class="ph">
-    <div><h2>Tasks</h2><p>Studio workflow — editing, printing, framing and more</p></div>
+    <div><h2>Tasks</h2><p>Studio workflow — assign work to staff and track completion</p></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-gold" onclick="openTaskModal()">➕ New Task</button>
+      <button class="btn" onclick="aTabTask('report')" id="tab-report-btn">📊 Report</button>
+    </div>
   </div>
-  <div class="card" style="text-align:center;padding:40px 20px;">
-    <div style="font-size:48px;margin-bottom:16px;">📋</div>
-    <h3 style="margin-bottom:8px;">Tasks Manager</h3>
-    <p style="color:var(--muted);margin-bottom:20px;font-size:13px;">
-      Tasks have moved to a dedicated web app for a better experience.<br>
-      Connected to the same Google Sheet — all your client data is synced.
-    </p>
-    <a id="tasks-app-link" href="#" target="_blank" class="btn btn-gold" style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;font-size:14px;text-decoration:none;">
-      Open Tasks App ↗
-    </a>
-    <div style="margin-top:16px;font-size:11px;color:var(--muted);">
-      <strong>Tip:</strong> Set the Tasks App URL in Settings to link it here.
+
+  <!-- Sub-tabs: List / Board / Report -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--border);overflow-x:auto;">
+    <button class="task-tab on" onclick="aTabTask('list')" id="ttab-list">📋 List</button>
+    <button class="task-tab" onclick="aTabTask('board')" id="ttab-board">🗂 Board</button>
+    <button class="task-tab" onclick="aTabTask('report')" id="ttab-report">📊 Report</button>
+  </div>
+
+  <!-- LIST view -->
+  <div id="tpanel-list">
+    <!-- Filters -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
+      <input class="inp" id="task-search" placeholder="Search tasks…" style="flex:1;min-width:180px;" oninput="renderTaskList()">
+      <select class="inp" id="task-filter-staff" onchange="renderTaskList()" style="max-width:170px;">
+        <option value="">All staff</option>
+      </select>
+      <select class="inp" id="task-filter-type" onchange="renderTaskList()" style="max-width:140px;">
+        <option value="">All types</option>
+        <option value="edit">📝 Edit</option>
+        <option value="print">🖨 Print</option>
+        <option value="frame">🖼 Frame</option>
+        <option value="shoot">📸 Shoot</option>
+        <option value="admin">📋 Admin</option>
+        <option value="other">📌 Other</option>
+      </select>
+      <select class="inp" id="task-filter-status" onchange="renderTaskList()" style="max-width:140px;">
+        <option value="open">Open</option>
+        <option value="all">All</option>
+        <option value="done">Done</option>
+        <option value="overdue">Overdue</option>
+      </select>
+    </div>
+    <div id="task-list-container"></div>
+  </div>
+
+  <!-- BOARD view (Kanban) -->
+  <div id="tpanel-board" style="display:none;">
+    <div id="task-board-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- REPORT view -->
+  <div id="tpanel-report" style="display:none;">
+    <!-- Date range filter -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:var(--white);padding:14px;border-radius:12px;border:1px solid var(--border);">
+      <span style="font-size:12px;font-weight:600;color:var(--muted);">Report period:</span>
+      <input class="inp" id="task-rep-from" type="date" style="max-width:160px;" onchange="renderTaskReport()">
+      <span style="font-size:11px;color:var(--muted);">to</span>
+      <input class="inp" id="task-rep-to" type="date" style="max-width:160px;" onchange="renderTaskReport()">
+      <button class="btn btn-sm" onclick="setTaskRange('week')">This Week</button>
+      <button class="btn btn-sm" onclick="setTaskRange('month')">This Month</button>
+      <button class="btn btn-sm" onclick="setTaskRange('all')">All Time</button>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-row" id="task-kpis" style="margin-bottom:14px;"></div>
+
+    <!-- Staff Performance Table -->
+    <div class="card" style="margin-bottom:14px;">
+      <h3 style="font-size:14px;margin-bottom:12px;">👥 Staff Productivity</h3>
+      <div id="task-staff-perf"></div>
+    </div>
+
+    <!-- By Type breakdown -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px;">📊 By Type</h3>
+        <div id="task-by-type"></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14px;margin-bottom:12px;">⚠ Overdue Tasks</h3>
+        <div id="task-overdue-list"></div>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- ── Task Modal ── -->
+<div class="pm-bg" id="task-modal-bg" onclick="if(event.target===this)closeTaskModal()">
+  <div class="pm" style="max-width:560px;">
+    <div class="pm-h">
+      <span id="task-modal-title">➕ New Task</span>
+      <button onclick="closeTaskModal()" style="background:rgba(255,255,255,.12);border:none;color:var(--cream);border-radius:6px;padding:4px 10px;cursor:pointer;">✕</button>
+    </div>
+    <div class="pm-b">
+      <input type="hidden" id="tf-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="fg" style="grid-column:1/-1;"><label class="fl">Title *</label>
+          <input class="inp" id="tf-title" placeholder="e.g. Edit wedding photos — Cruz family">
+        </div>
+        <div class="fg"><label class="fl">Type</label>
+          <select class="inp" id="tf-type">
+            <option value="edit">📝 Edit</option>
+            <option value="print">🖨 Print</option>
+            <option value="frame">🖼 Frame</option>
+            <option value="shoot">📸 Shoot</option>
+            <option value="admin">📋 Admin</option>
+            <option value="other">📌 Other</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Priority</label>
+          <select class="inp" id="tf-priority">
+            <option value="low">🟢 Low</option>
+            <option value="normal" selected>🟡 Normal</option>
+            <option value="high">🟠 High</option>
+            <option value="urgent">🔴 Urgent</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Assigned To *</label>
+          <select class="inp" id="tf-assigned"></select>
+        </div>
+        <div class="fg"><label class="fl">Due Date</label>
+          <input class="inp" id="tf-due" type="date">
+        </div>
+        <div class="fg"><label class="fl">Client</label>
+          <input class="inp" id="tf-client" placeholder="Client name (optional)">
+        </div>
+        <div class="fg"><label class="fl">Client Email</label>
+          <input class="inp" id="tf-client-email" type="email" placeholder="For notifications">
+        </div>
+        <div class="fg" style="grid-column:1/-1;"><label class="fl">Drive / Reference Link</label>
+          <input class="inp" id="tf-drive" placeholder="https://drive.google.com/...">
+        </div>
+        <div class="fg" style="grid-column:1/-1;"><label class="fl">Notes</label>
+          <textarea class="inp" id="tf-notes" rows="3" placeholder="Details, instructions, deliverables…"></textarea>
+        </div>
+        <div class="fg" style="grid-column:1/-1;"><label class="fl">Stage</label>
+          <select class="inp" id="tf-stage">
+            <option value="todo">📋 To Do</option>
+            <option value="in-progress">🔄 In Progress</option>
+            <option value="review">👀 Review</option>
+            <option value="done">✅ Done</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);">
+        <button class="btn btn-d btn-sm" id="task-delete-btn" onclick="deleteTaskFromModal()" style="display:none;margin-right:auto;">🗑 Delete</button>
+        <button class="btn" onclick="closeTaskModal()">Cancel</button>
+        <button class="btn btn-gold" onclick="saveTaskForm()">💾 Save Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.task-tab{padding:9px 16px;font-size:12px;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.task-tab.on{color:var(--teal);border-bottom-color:var(--teal);}
+.task-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s;}
+.task-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.task-card.overdue{border-left:3px solid var(--danger);}
+.task-card.done{opacity:.55;}
+.priority-low{background:rgba(58,125,92,.1);color:var(--success);}
+.priority-normal{background:rgba(81,137,125,.1);color:var(--teal);}
+.priority-high{background:rgba(215,144,104,.12);color:var(--gold);}
+.priority-urgent{background:rgba(192,84,74,.12);color:var(--danger);}
+.type-edit{background:#d4edda;}.type-print{background:#cce5ff;}.type-frame{background:#fff3cd;}.type-shoot{background:#e8d4ed;}.type-admin{background:#f4f7f6;}.type-other{background:#f4f7f6;}
+.board-column{background:var(--light);border-radius:12px;padding:12px;min-height:200px;}
+.board-column-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;color:var(--muted);display:flex;justify-content:space-between;}
+</style>
 
 <!-- CLIENTS — CRM DASHBOARD -->
 <div id="page-clients" class="page">
@@ -1909,9 +2065,9 @@ tr:hover td { background:var(--light); }
           <input type="email" id="set-eod-email" placeholder="owner@gmail.com">
           <div style="font-size:10px;color:var(--muted);margin-top:4px;">End of Shift reports will be emailed here after each submission.</div>
         <div class="field mb16">
-          <label for="set-tasks-url">Tasks App URL</label>
-          <input type="url" id="set-tasks-url" placeholder="https://your-tasks-app-url.com">
-          <div style="font-size:10px;color:var(--muted);margin-top:4px;">Link to your external Tasks Manager web app.</div>
+          <label for="set-tasks-url">TimeCommand URL</label>
+          <input type="url" id="set-tasks-url" placeholder="https://script.google.com/macros/s/.../exec">
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;">Used to load staff list for task assignment. Paste your TimeCommand GAS deployment URL.</div>
         </div>
         </div>
         <div style="background:rgba(192,84,74,0.06);border:1px solid rgba(192,84,74,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
@@ -2769,7 +2925,8 @@ function saveStudio(){
   const fbUrl     = (document.getElementById('set-feedback-url')?.value||'').trim();
   const eodEmail  = (document.getElementById('set-eod-email')?.value||'').trim();
   const tasksUrl  = (document.getElementById('set-tasks-url')?.value||'').trim();
-  DB.studioInfo   = Object.assign(DB.studioInfo||{}, {name, contact, address, feedbackUrl:fbUrl, eodEmail, tasksAppUrl:tasksUrl});
+  DB.studioInfo   = Object.assign(DB.studioInfo||{}, {name, contact, address, feedbackUrl:fbUrl, eodEmail, tasksAppUrl:tasksUrl, timeCommandUrl:tasksUrl});
+  localStorage.setItem('cl_tc_url', tasksUrl);
   saveLocal();
   if(hasUrl()) push('saveSettings', DB.studioInfo);
   notify('Studio info saved ✓','success');
@@ -4241,7 +4398,12 @@ function showPage(pg){
     settings:     renderSettings,
     calendar:     renderCalendar,
     reports:      renderReports,
-    tasks: function(){ var link=document.getElementById('tasks-app-link'); if(link&&DB.studioInfo&&DB.studioInfo.tasksAppUrl) link.href=DB.studioInfo.tasksAppUrl; }
+    tasks: function(){
+      // Load TimeCommand staff if not already loaded
+      loadTimeCommandStaff();
+      populateTaskStaffSelectors();
+      aTabTask(TASK_CURRENT_TAB || 'list');
+    }
   };
   if(map[pg]) map[pg]();
 }
@@ -4509,24 +4671,491 @@ function printCashflowReport(){
 //  TASKS — Kanban Workflow
 // ================================================================
 
-// Tasks moved to external app
-function loadTasks(){}
-function renderTasks(){}
-function renderKanban(){}
-function openNewTask(){}
-function buildTaskCard(){}
-function filterTasks(){}
-function setTaskView(){}
+// ================================================================
+//  TASKS — Full implementation with staff assignment & reports
+// ================================================================
+var TASK_CURRENT_TAB = 'list';
+window.TIMECOMMAND_STAFF = window.TIMECOMMAND_STAFF || [];
+
+// Pull staff list from TimeCommand (separate GAS endpoint configurable in Settings)
+async function loadTimeCommandStaff(){
+  var tcUrl = (DB.studioInfo && DB.studioInfo.timeCommandUrl) || localStorage.getItem('cl_tc_url') || '';
+  if(!tcUrl){
+    // Fall back: try to pull from common locations
+    return;
+  }
+  try {
+    var b = btoa(unescape(encodeURIComponent(JSON.stringify({action:'getStaffNames', payload:{}}))));
+    var url = tcUrl + '?d=' + encodeURIComponent(b) + '&action=getStaffNames';
+    var data = await new Promise(function(res, rej){
+      var cb = '_tcps' + Date.now() + Math.random().toString(36).slice(2);
+      var sid = cb + '_s';
+      var tm = setTimeout(function(){
+        delete window[cb];
+        var el = document.getElementById(sid); if(el) el.remove();
+        rej(new Error('Timeout'));
+      }, 15000);
+      window[cb] = function(d){
+        clearTimeout(tm); delete window[cb];
+        var el = document.getElementById(sid); if(el) el.remove();
+        res(d);
+      };
+      var s = document.createElement('script');
+      s.id = sid;
+      s.src = url + '&callback=' + cb;
+      s.onerror = function(){ clearTimeout(tm); delete window[cb]; s.remove(); rej(new Error('Network')); };
+      document.body.appendChild(s);
+    });
+    if(data && data.ok && Array.isArray(data.staff)){
+      window.TIMECOMMAND_STAFF = data.staff;
+      populateTaskStaffSelectors();
+    }
+  } catch(e){
+    console.warn('Could not load TimeCommand staff:', e.message);
+  }
+}
+
+function loadTasks(){
+  // TASKS array is already populated by syncAll() / loadLocal()
+  // Re-render whatever view is active
+  if(document.getElementById('tpanel-list')){
+    populateTaskStaffSelectors();
+    renderTaskList();
+  }
+}
+
+function aTabTask(id){
+  TASK_CURRENT_TAB = id;
+  ['list','board','report'].forEach(function(t){
+    var btn = document.getElementById('ttab-'+t);
+    var pnl = document.getElementById('tpanel-'+t);
+    if(btn) btn.classList.toggle('on', t===id);
+    if(pnl) pnl.style.display = t===id ? '' : 'none';
+  });
+  if(id==='list')   renderTaskList();
+  if(id==='board')  renderTaskBoard();
+  if(id==='report') renderTaskReport();
+}
+
+function populateTaskStaffSelectors(){
+  // Pull staff names — prefer TimeCommand staff if available, otherwise fall back to a manual list
+  var staff = (window.TIMECOMMAND_STAFF || []).filter(function(s){ return s.status==='active' || !s.status; });
+  // If TimeCommand not synced, derive from existing task assignees
+  if(!staff.length){
+    var assignees = [...new Set((TASKS||[]).map(function(t){ return t.assignedTo; }).filter(Boolean))];
+    staff = assignees.map(function(name){ return { name:name }; });
+  }
+  // Also include any names from settings staffList
+  try {
+    var custom = JSON.parse(localStorage.getItem('cl_task_staff')||'[]');
+    custom.forEach(function(n){ if(!staff.find(function(s){ return s.name===n; })) staff.push({name:n}); });
+  } catch(e){}
+
+  var formSel = document.getElementById('tf-assigned');
+  if(formSel){
+    var current = formSel.value;
+    formSel.innerHTML = '<option value="">— Unassigned —</option>' +
+      staff.map(function(s){ return '<option value="'+escapeHtml(s.name)+'">'+escapeHtml(s.name)+'</option>'; }).join('');
+    formSel.value = current;
+  }
+  var filterSel = document.getElementById('task-filter-staff');
+  if(filterSel){
+    var current2 = filterSel.value;
+    filterSel.innerHTML = '<option value="">All staff</option><option value="__unassigned">— Unassigned —</option>' +
+      staff.map(function(s){ return '<option value="'+escapeHtml(s.name)+'">'+escapeHtml(s.name)+'</option>'; }).join('');
+    filterSel.value = current2;
+  }
+}
+
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s||'').replace(/'/g,"\\'"); }
+
+function renderTaskList(){
+  var container = document.getElementById('task-list-container');
+  if(!container) return;
+  var q = (document.getElementById('task-search')?.value||'').toLowerCase().trim();
+  var staffF = document.getElementById('task-filter-staff')?.value || '';
+  var typeF = document.getElementById('task-filter-type')?.value || '';
+  var statusF = document.getElementById('task-filter-status')?.value || 'open';
+  var today = todayStr();
+
+  var tasks = (TASKS||[]).filter(function(t){ return !t.archived; });
+
+  // Status filter
+  tasks = tasks.filter(function(t){
+    if(statusF==='open')    return !t.done;
+    if(statusF==='done')    return t.done;
+    if(statusF==='overdue') return !t.done && t.due && t.due < today;
+    return true;
+  });
+  // Staff filter
+  if(staffF){
+    if(staffF==='__unassigned') tasks = tasks.filter(function(t){ return !t.assignedTo; });
+    else tasks = tasks.filter(function(t){ return t.assignedTo===staffF; });
+  }
+  if(typeF) tasks = tasks.filter(function(t){ return t.type===typeF; });
+  // Search
+  if(q) tasks = tasks.filter(function(t){
+    return (t.title+' '+(t.client||'')+' '+(t.notes||'')+' '+(t.assignedTo||'')).toLowerCase().indexOf(q) > -1;
+  });
+
+  // Sort: overdue first, then by priority, then by due date
+  var priOrder = {urgent:0, high:1, normal:2, low:3};
+  tasks.sort(function(a,b){
+    var aOver = !a.done && a.due && a.due < today;
+    var bOver = !b.done && b.due && b.due < today;
+    if(aOver !== bOver) return aOver ? -1 : 1;
+    var aP = priOrder[a.priority||'normal'], bP = priOrder[b.priority||'normal'];
+    if(aP !== bP) return aP - bP;
+    return (a.due||'9999').localeCompare(b.due||'9999');
+  });
+
+  if(!tasks.length){
+    container.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">No tasks match. Try ➕ New Task or change filters.</div>';
+    return;
+  }
+
+  container.innerHTML = tasks.map(buildTaskRowCard).join('');
+}
+
+function buildTaskRowCard(t){
+  var today = todayStr();
+  var overdue = !t.done && t.due && t.due < today;
+  var typeIcons = {edit:'📝',print:'🖨',frame:'🖼',shoot:'📸',admin:'📋',other:'📌'};
+  var priority = t.priority||'normal';
+  var stage = t.stage || (t.done?'done':'todo');
+  var stageLabels = {'todo':'📋 To Do','in-progress':'🔄 In Progress','review':'👀 Review','done':'✅ Done'};
+  return '<div class="task-card '+(t.done?'done':'')+' '+(overdue?'overdue':'')+'" onclick="openTaskModal(\''+escAttr(t.id)+'\')">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-weight:600;font-size:13px;'+(t.done?'text-decoration:line-through;':'')+'">'+(typeIcons[t.type]||'📌')+' '+escapeHtml(t.title)+'</div>'+
+        (t.client?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">👤 '+escapeHtml(t.client)+'</div>':'')+
+      '</div>'+
+      '<span class="bdg priority-'+priority+'" style="font-size:9px;padding:3px 8px;border-radius:6px;font-weight:700;text-transform:uppercase;">'+priority+'</span>'+
+    '</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:6px;">'+
+      (t.assignedTo?'<span>👤 '+escapeHtml(t.assignedTo)+'</span>':'<span style="color:var(--danger);">⚠ Unassigned</span>')+
+      (t.due?'<span style="'+(overdue?'color:var(--danger);font-weight:600;':'')+'">📅 '+t.due+(overdue?' (overdue)':'')+'</span>':'')+
+      '<span>'+stageLabels[stage]+'</span>'+
+    '</div>'+
+    (t.notes?'<div style="font-size:11px;color:var(--slate);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5;">'+escapeHtml(t.notes.slice(0,140))+(t.notes.length>140?'…':'')+'</div>':'')+
+    '<div style="margin-top:10px;display:flex;gap:6px;justify-content:flex-end;" onclick="event.stopPropagation()">'+
+      (!t.done?'<button class="btn btn-sm btn-success" onclick="toggleTaskDone(\''+escAttr(t.id)+'\',true)">✓ Mark Done</button>':
+               '<button class="btn btn-sm" onclick="toggleTaskDone(\''+escAttr(t.id)+'\',false)">↺ Reopen</button>')+
+      '<button class="btn btn-sm" onclick="openTaskModal(\''+escAttr(t.id)+'\')">✏ Edit</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderTaskBoard(){
+  var container = document.getElementById('task-board-container');
+  if(!container) return;
+  var stages = [
+    {id:'todo',         label:'📋 To Do',        color:'var(--slate)'},
+    {id:'in-progress',  label:'🔄 In Progress',  color:'var(--gold)'},
+    {id:'review',       label:'👀 Review',       color:'var(--teal)'},
+    {id:'done',         label:'✅ Done',         color:'var(--success)'}
+  ];
+  var tasks = (TASKS||[]).filter(function(t){ return !t.archived; });
+  container.innerHTML = stages.map(function(s){
+    var stageTasks = tasks.filter(function(t){
+      var ts = t.stage || (t.done?'done':'todo');
+      return ts === s.id;
+    });
+    return '<div class="board-column">'+
+      '<div class="board-column-header" style="color:'+s.color+';">'+s.label+'<span>'+stageTasks.length+'</span></div>'+
+      (stageTasks.length ? stageTasks.map(buildTaskRowCard).join('') : '<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px;">No tasks</div>')+
+    '</div>';
+  }).join('');
+}
+
+function setTaskRange(p){
+  var df = document.getElementById('task-rep-from');
+  var dt = document.getElementById('task-rep-to');
+  var today = new Date();
+  var to = todayStr();
+  var from = to;
+  if(p==='week'){
+    var d = new Date(); d.setDate(d.getDate()-7);
+    from = d.toISOString().slice(0,10);
+  } else if(p==='month'){
+    var y = today.getFullYear(), m = String(today.getMonth()+1).padStart(2,'0');
+    from = y+'-'+m+'-01';
+  } else if(p==='all'){
+    from = '2020-01-01';
+  }
+  df.value = from; dt.value = to;
+  renderTaskReport();
+}
+
+function renderTaskReport(){
+  if(!document.getElementById('task-kpis')) return;
+  var df = document.getElementById('task-rep-from');
+  var dt = document.getElementById('task-rep-to');
+  if(!df.value){
+    var today = new Date();
+    var y = today.getFullYear(), m = String(today.getMonth()+1).padStart(2,'0');
+    df.value = y+'-'+m+'-01';
+    dt.value = todayStr();
+  }
+  var from = df.value, to = dt.value;
+  var today = todayStr();
+
+  // Filter tasks by date range (use createdAt or completedAt)
+  var all = (TASKS||[]).filter(function(t){ return !t.archived; });
+  var inRange = all.filter(function(t){
+    var d = (t.createdAt||'').slice(0,10);
+    return d >= from && d <= to;
+  });
+
+  // KPIs
+  var total = inRange.length;
+  var done = inRange.filter(function(t){ return t.done; }).length;
+  var open = inRange.filter(function(t){ return !t.done; }).length;
+  var overdue = all.filter(function(t){ return !t.done && t.due && t.due < today; }).length;
+  var unassigned = all.filter(function(t){ return !t.done && !t.assignedTo; }).length;
+  var completion = total ? Math.round(done/total*100) : 0;
+
+  // Avg time to complete (days from createdAt to completedAt for done tasks)
+  var doneWithTimes = inRange.filter(function(t){ return t.done && t.createdAt && t.completedAt; });
+  var avgDays = 0;
+  if(doneWithTimes.length){
+    var totalDays = doneWithTimes.reduce(function(sum,t){
+      var c = new Date(t.createdAt), d = new Date(t.completedAt);
+      return sum + Math.max(0, (d-c)/(1000*60*60*24));
+    },0);
+    avgDays = (totalDays/doneWithTimes.length).toFixed(1);
+  }
+
+  document.getElementById('task-kpis').innerHTML = [
+    {l:'Total Tasks',       v:total,                    c:'var(--teal)'},
+    {l:'Completed',         v:done,                     c:'var(--success)'},
+    {l:'Completion Rate',   v:completion+'%',           c:completion>=80?'var(--success)':completion>=50?'var(--gold)':'var(--danger)'},
+    {l:'Open',              v:open,                     c:'var(--slate)'},
+    {l:'Overdue (total)',   v:overdue,                  c:overdue?'var(--danger)':'var(--muted)'},
+    {l:'Unassigned',        v:unassigned,               c:unassigned?'var(--gold)':'var(--muted)'},
+    {l:'Avg Days to Done',  v:avgDays>0?avgDays:'—',    c:'var(--teal)'}
+  ].map(function(k){
+    return '<div class="rep-card-stat"><div class="rs-label">'+k.l+'</div><div class="rs-val" style="color:'+k.c+'">'+k.v+'</div></div>';
+  }).join('');
+
+  // Staff performance
+  var staffMap = {};
+  inRange.forEach(function(t){
+    var who = t.assignedTo || '— Unassigned —';
+    if(!staffMap[who]) staffMap[who] = {assigned:0, done:0, open:0, overdue:0, daysTotal:0, daysCount:0};
+    staffMap[who].assigned++;
+    if(t.done){
+      staffMap[who].done++;
+      if(t.createdAt && t.completedAt){
+        var c = new Date(t.createdAt), d = new Date(t.completedAt);
+        staffMap[who].daysTotal += Math.max(0,(d-c)/(1000*60*60*24));
+        staffMap[who].daysCount++;
+      }
+    } else {
+      staffMap[who].open++;
+      if(t.due && t.due < today) staffMap[who].overdue++;
+    }
+  });
+  var staffArr = Object.keys(staffMap).map(function(name){
+    var s = staffMap[name];
+    return {
+      name:name, assigned:s.assigned, done:s.done, open:s.open, overdue:s.overdue,
+      completionRate: s.assigned ? Math.round(s.done/s.assigned*100) : 0,
+      avgDays: s.daysCount ? (s.daysTotal/s.daysCount).toFixed(1) : '—'
+    };
+  }).sort(function(a,b){ return b.done - a.done; });
+
+  document.getElementById('task-staff-perf').innerHTML = staffArr.length ?
+    '<table class="a-table" style="width:100%;"><thead><tr>'+
+      '<th>Staff</th><th>Assigned</th><th>Done</th><th>Open</th><th>Overdue</th><th>Rate</th><th>Avg Days</th>'+
+    '</tr></thead><tbody>'+
+    staffArr.map(function(s){
+      var rateColor = s.completionRate>=80?'var(--success)':s.completionRate>=50?'var(--gold)':'var(--danger)';
+      return '<tr>'+
+        '<td><strong>'+escapeHtml(s.name)+'</strong></td>'+
+        '<td>'+s.assigned+'</td>'+
+        '<td style="color:var(--success);font-weight:600;">'+s.done+'</td>'+
+        '<td>'+s.open+'</td>'+
+        '<td style="color:'+(s.overdue?'var(--danger);font-weight:600':'var(--muted)')+'">'+s.overdue+'</td>'+
+        '<td style="color:'+rateColor+';font-weight:600;">'+s.completionRate+'%</td>'+
+        '<td>'+s.avgDays+'</td>'+
+      '</tr>';
+    }).join('')+'</tbody></table>'
+    : '<p style="color:var(--muted);font-size:12px;text-align:center;padding:12px;">No staff activity in this range.</p>';
+
+  // By type
+  var typeMap = {};
+  inRange.forEach(function(t){
+    var ty = t.type || 'other';
+    if(!typeMap[ty]) typeMap[ty] = {total:0, done:0};
+    typeMap[ty].total++;
+    if(t.done) typeMap[ty].done++;
+  });
+  var typeIcons = {edit:'📝',print:'🖨',frame:'🖼',shoot:'📸',admin:'📋',other:'📌'};
+  document.getElementById('task-by-type').innerHTML = Object.keys(typeMap).length ?
+    Object.keys(typeMap).map(function(t){
+      var d = typeMap[t];
+      var pct = d.total ? Math.round(d.done/d.total*100) : 0;
+      return '<div style="margin-bottom:10px;">'+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">'+
+          '<span>'+(typeIcons[t]||'📌')+' <strong>'+t.charAt(0).toUpperCase()+t.slice(1)+'</strong></span>'+
+          '<span style="color:var(--muted);">'+d.done+'/'+d.total+' ('+pct+'%)</span>'+
+        '</div>'+
+        '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--teal);"></div></div>'+
+      '</div>';
+    }).join('')
+    : '<p style="color:var(--muted);font-size:12px;text-align:center;">No tasks in range.</p>';
+
+  // Overdue list (all-time, not range-bound, since they're still actionable)
+  var overdueList = all.filter(function(t){ return !t.done && t.due && t.due < today; })
+    .sort(function(a,b){ return (a.due||'').localeCompare(b.due||''); })
+    .slice(0,8);
+  document.getElementById('task-overdue-list').innerHTML = overdueList.length ?
+    overdueList.map(function(t){
+      var daysOver = Math.floor((new Date(today)-new Date(t.due))/(1000*60*60*24));
+      return '<div style="padding:8px 10px;background:var(--white);border-left:3px solid var(--danger);border-radius:6px;margin-bottom:6px;cursor:pointer;" onclick="openTaskModal(\''+escAttr(t.id)+'\')">'+
+        '<div style="font-size:12px;font-weight:600;">'+escapeHtml(t.title)+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-top:2px;">'+
+          (t.assignedTo?'👤 '+escapeHtml(t.assignedTo)+' · ':'')+
+          '⚠ '+daysOver+' day'+(daysOver===1?'':'s')+' overdue'+
+        '</div>'+
+      '</div>';
+    }).join('')
+    : '<p style="color:var(--success);font-size:12px;text-align:center;padding:8px;">🎉 No overdue tasks!</p>';
+}
+
+// ── Task Modal ──
+function openTaskModal(taskId){
+  populateTaskStaffSelectors();
+  ['tf-id','tf-title','tf-due','tf-client','tf-client-email','tf-drive','tf-notes'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('tf-type').value='edit';
+  document.getElementById('tf-priority').value='normal';
+  document.getElementById('tf-stage').value='todo';
+  document.getElementById('tf-assigned').value='';
+  document.getElementById('task-delete-btn').style.display = 'none';
+
+  if(taskId){
+    var t = (TASKS||[]).find(function(x){ return x.id===taskId; });
+    if(!t) return;
+    document.getElementById('task-modal-title').textContent = '✏ Edit Task';
+    document.getElementById('tf-id').value = t.id;
+    document.getElementById('tf-title').value = t.title || '';
+    document.getElementById('tf-type').value = t.type || 'edit';
+    document.getElementById('tf-priority').value = t.priority || 'normal';
+    document.getElementById('tf-stage').value = t.stage || (t.done?'done':'todo');
+    document.getElementById('tf-assigned').value = t.assignedTo || '';
+    document.getElementById('tf-due').value = t.due || '';
+    document.getElementById('tf-client').value = t.client || '';
+    document.getElementById('tf-client-email').value = t.clientEmail || '';
+    document.getElementById('tf-drive').value = t.driveLink || '';
+    document.getElementById('tf-notes').value = t.notes || '';
+    document.getElementById('task-delete-btn').style.display = '';
+  } else {
+    document.getElementById('task-modal-title').textContent = '➕ New Task';
+  }
+  document.getElementById('task-modal-bg').classList.add('open');
+}
+
+function closeTaskModal(){
+  document.getElementById('task-modal-bg').classList.remove('open');
+}
+
+async function saveTaskForm(){
+  var title = document.getElementById('tf-title').value.trim();
+  if(!title){ toast('Title is required.'); return; }
+  var id = document.getElementById('tf-id').value;
+  var stage = document.getElementById('tf-stage').value;
+  var existing = id ? (TASKS||[]).find(function(t){ return t.id===id; }) : null;
+  var now = new Date().toISOString();
+  var task = {
+    id: id || ('task_' + Date.now() + '_' + Math.random().toString(36).slice(2,7)),
+    createdAt: existing ? existing.createdAt : now,
+    type: document.getElementById('tf-type').value,
+    title: title,
+    client: document.getElementById('tf-client').value.trim(),
+    clientEmail: document.getElementById('tf-client-email').value.trim(),
+    due: document.getElementById('tf-due').value,
+    notes: document.getElementById('tf-notes').value.trim(),
+    driveLink: document.getElementById('tf-drive').value.trim(),
+    stage: stage,
+    done: stage==='done',
+    completedAt: stage==='done' ? (existing && existing.completedAt ? existing.completedAt : now) : '',
+    archived: existing ? !!existing.archived : false,
+    priority: document.getElementById('tf-priority').value,
+    assignedTo: document.getElementById('tf-assigned').value,
+    updatedAt: now
+  };
+
+  // Update local cache first for immediate UI feedback
+  if(existing){
+    var idx = TASKS.findIndex(function(x){ return x.id===task.id; });
+    if(idx > -1) TASKS[idx] = task;
+  } else {
+    TASKS.unshift(task);
+  }
+  saveLocal();
+
+  closeTaskModal();
+  if(TASK_CURRENT_TAB==='list') renderTaskList();
+  else if(TASK_CURRENT_TAB==='board') renderTaskBoard();
+  else if(TASK_CURRENT_TAB==='report') renderTaskReport();
+  toast(existing ? '✅ Task updated' : '✅ Task created');
+
+  // Sync to server
+  try{
+    var r = await gas(existing ? 'updateTask' : 'saveTask', task);
+    if(!r || !r.ok) throw new Error((r && r.error) || 'Sync failed');
+  }catch(e){ toast('⚠ Saved locally. Sync failed: '+e.message); }
+}
+
+async function toggleTaskDone(taskId, doneState){
+  var t = (TASKS||[]).find(function(x){ return x.id===taskId; });
+  if(!t) return;
+  t.done = doneState;
+  t.stage = doneState ? 'done' : 'todo';
+  t.completedAt = doneState ? new Date().toISOString() : '';
+  t.updatedAt = new Date().toISOString();
+  saveLocal();
+  if(TASK_CURRENT_TAB==='list') renderTaskList();
+  else if(TASK_CURRENT_TAB==='board') renderTaskBoard();
+  try{
+    await gas('updateTask', t);
+  }catch(e){}
+}
+
+async function deleteTaskFromModal(){
+  var id = document.getElementById('tf-id').value;
+  if(!id) return;
+  if(!confirm('Permanently delete this task?')) return;
+  TASKS = (TASKS||[]).filter(function(t){ return t.id !== id; });
+  saveLocal();
+  closeTaskModal();
+  if(TASK_CURRENT_TAB==='list') renderTaskList();
+  else if(TASK_CURRENT_TAB==='board') renderTaskBoard();
+  else if(TASK_CURRENT_TAB==='report') renderTaskReport();
+  toast('🗑 Task deleted');
+  try{ await gas('deleteTask', {id:id}); }catch(e){}
+}
+
+// Legacy stubs (kept for compatibility with other code)
+function renderTasks(){ renderTaskList(); }
+function renderKanban(){ renderTaskBoard(); }
+function openNewTask(){ openTaskModal(); }
+function filterTasks(){ renderTaskList(); }
+function setTaskView(v){ aTabTask(v==='board'?'board':'list'); }
 function toggleShowArchived(){}
-function deleteTask(){}
-function archiveTask(){}
+function deleteTask(id){ if(id) { TASKS = TASKS.filter(function(t){ return t.id !== id; }); saveLocal(); renderTaskList(); } }
+function archiveTask(id){ var t = TASKS.find(function(x){ return x.id===id; }); if(t){ t.archived=true; saveLocal(); renderTaskList(); } }
 function moveTaskStage(){}
 function reorderTask(){}
-function openTaskDetail(){}
-function saveTaskFromModal(){}
+function openTaskDetail(id){ openTaskModal(id); }
+function saveTaskFromModal(){ saveTaskForm(); }
 function onTaskClientChange(){}
 function sendTaskEmail(){}
-function toggleTask(){}
+function toggleTask(id){ var t = TASKS.find(function(x){ return x.id===id; }); if(t) toggleTaskDone(id, !t.done); }
 
 // ================================================================
 //  REST DAYS & HOLIDAYS — Settings
